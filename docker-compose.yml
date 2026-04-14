@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: meetingmind_postgres
+    environment:
+      POSTGRES_DB: meetingmind
+      POSTGRES_USER: meetingmind
+      POSTGRES_PASSWORD: meetingmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - meetingmind_network
+
+  redis:
+    image: redis:7
+    container_name: meetingmind_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - meetingmind_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meetingmind_backend
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    networks:
+      - meetingmind_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: meetingmind_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - meetingmind_network
+
+volumes:
+  postgres_data:
+
+networks:
+  meetingmind_network:
+    driver: bridge

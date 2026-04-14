@@ -1,0 +1,9 @@
+[submodule "vexa"]
+	path = vexa
+	url = https://github.com/MeetingMind-AI/vexa.git
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/MeetingMind-AI/frontend.git
+[submodule "backend"]
+	path = backend
+	url = https://github.com/MeetingMind-AI/backend.git
