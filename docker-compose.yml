@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15
@@ -34,6 +32,9 @@ services:
     environment:
       DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
       REDIS_URL: redis://redis:6379/0
+      VEXA_API_URL: http://host.docker.internal:8056/bots
+      VEXA_WS_URL: ws://host.docker.internal:8056/ws
+      VEXA_API_KEY: F0zN7BNhr6c0oNpQCZ0VIUQ5CRz6fPZnC9HzRhm2
     ports:
       - "8000:8000"
     networks:
