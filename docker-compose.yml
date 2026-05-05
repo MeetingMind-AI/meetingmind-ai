@@ -54,8 +54,27 @@ services:
     networks:
       - meetingmind_network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: meetingmind_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - meetingmind_network
+    # If your Linux VM has an NVIDIA GPU, uncomment below:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 volumes:
   postgres_data:
+  ollama_data:
 
 networks:
   meetingmind_network:
