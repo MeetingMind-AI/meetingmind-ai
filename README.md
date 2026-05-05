@@ -153,6 +153,16 @@ Then restart the service: `sudo systemctl daemon-reload && sudo systemctl restar
 If the Vexa API Gateway rejects the WebSocket connection, ensure your WebSocket client passes the API key as a URL parameter rather than a header, as Python websockets can strip headers across Docker bridges:
 `ws://host.docker.internal:8056/ws?api_key=your_key_here`
 
+### 4. Submodule Update Issues (Pulling on VM)
+Since we just want the VM to reflect the latest pushed code from GitHub, you can discard those local changes on the VM by running this:
+```bash
+git submodule foreach git reset --hard
+```
+After doing that, run the submodule update again:
+```bash
+git submodule update --init --recursive
+```
+
 ## Development Workflow
 
 - Backend code: `backend/app`
