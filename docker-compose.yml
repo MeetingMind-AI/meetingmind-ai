@@ -64,13 +64,13 @@ services:
     networks:
       - meetingmind_network
     # If your Linux VM has an NVIDIA GPU, uncomment below:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   postgres_data:
