@@ -59,6 +59,20 @@ This repository orchestrates two main zones:
 - This repo may include submodules; update them with:
   - `git submodule update --init --recursive`
 
+### Submodule Sync Alias
+
+To simplify syncing submodules to their latest commits and pushing those changes to the main repository, you can set up a git alias:
+
+```bash
+git config --global alias.sync-modules '!git submodule update --remote && git add . && git commit -m "Auto-synced submodules to latest commits" && git push origin main'
+```
+
+Then, you can sync all submodules with a single command:
+
+```bash
+git sync-modules
+```
+
 ## Troubleshooting
 
 - If WS subscription fails, confirm:
