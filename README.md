@@ -34,15 +34,49 @@ This repository orchestrates two main zones:
 - Ollama running locally with model available (for example `llama3`)
 - Vexa stack running locally (from `vexa/`)
 
-## Quick Start
+## 🚀 Quickstart & Deployment
 
-1. Start Vexa stack (inside `vexa/`):
-   - Use the Vexa project instructions (`make all` in the Vexa repo setup).
-2. Start monorepo services (from repo root):
-   - `docker-compose up -d --build`
-3. Verify health:
-   - Backend: `http://localhost:8000/health`
-   - Backend docs: `http://localhost:8000/docs`
+This project requires two zones to be running: **The Sensor Zone** (Vexa) and **The Brain Zone** (MeetingMind Backend).
+
+### Step 1: Start Vexa (The Sensor Zone)
+Navigate to the Vexa directory and start the headless bot infrastructure:
+```bash
+make all
+```
+
+### Step 2: Mint your Vexa API Key
+To allow the backend to dispatch bots, you must mint an API Key from Vexa's Admin API.
+
+**Create a User:**
+```bash
+curl -X POST "http://localhost:8057/admin/users" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-API-Key: changeme" \
+  -d '{"email": "bot@example.com", "name": "AI Assistant"}'
+```
+(Note the "id" returned in the JSON response, e.g., 1)
+
+**Generate the Key:**
+```bash
+curl -X POST "http://localhost:8057/admin/users/1/tokens" \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-API-Key: changeme" \
+  -d '{"name": "Backend Key", "scopes": ["bot", "tx", "browser"]}'
+```
+Copy the long string inside the "token" field from the response.
+
+### Step 3: Configure the Backend (The Brain Zone)
+In the root of the `backend/` directory, create a `.env` file and add your newly minted key:
+```env
+# Do not use quotes or trailing spaces
+VEXA_API_KEY=your_long_token_string_here
+```
+
+### Step 4: Boot the System
+Start the backend, database, and local LLM:
+```bash
+docker compose up -d
+```
 
 ## Typical Flow
 
@@ -73,14 +107,31 @@ Then, you can sync all submodules with a single command:
 git sync-modules
 ```
 
-## Troubleshooting
+## 🛠 Troubleshooting (Linux VM Environments)
 
-- If WS subscription fails, confirm:
-  - `VEXA_API_KEY` in backend container matches the key used for Vexa API calls.
-  - Vexa API Gateway is reachable at `host.docker.internal:8056` from backend container.
-- If summaries fail, confirm:
-  - Ollama is reachable at `host.docker.internal:11434`
-  - model configured in backend exists in Ollama (`llama3` by default)
+If you are deploying this on a Linux server rather than Docker Desktop for Mac/Windows, be aware of standard Linux networking restrictions.
+
+### 1. "Name or service not known" (502 Bad Gateway)
+Linux Docker does not natively resolve `host.docker.internal`. If your backend is trying to reach Vexa running on the host, ensure your `docker-compose.yml` includes the host-gateway mapping:
+```yaml
+services:
+  backend:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+```
+
+### 2. Ollama Connection Timeouts
+If you are running Ollama directly on the Linux host rather than inside Docker, it binds to `127.0.0.1` by default, blocking Docker containers.
+To fix this, edit the systemd service:
+```bash
+sudo systemctl edit ollama.service
+```
+Add the following to expose Ollama to the Docker bridge:
+```ini
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0"
+```
+Then restart the service: `sudo systemctl daemon-reload && sudo systemctl restart ollama`
 
 ## Development Workflow
 
