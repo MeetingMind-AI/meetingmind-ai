@@ -35,6 +35,8 @@ services:
       VEXA_API_URL: http://host.docker.internal:8056/bots
       VEXA_WS_URL: ws://host.docker.internal:8056/ws
       VEXA_API_KEY: F0zN7BNhr6c0oNpQCZ0VIUQ5CRz6fPZnC9HzRhm2
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     networks:
