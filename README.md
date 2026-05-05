@@ -73,10 +73,26 @@ VEXA_API_KEY=your_long_token_string_here
 ```
 
 ### Step 4: Boot the System
-Start the backend, database, and local LLM:
+Start the backend, database, and local LLM containers:
 ```bash
 docker compose up -d
 ```
+
+### Step 5: Initialize the Database
+Because this relies on a local PostgreSQL container, you must generate the tables on the first run:
+```bash
+docker compose exec backend alembic revision --autogenerate -m "initial_tables"
+docker compose exec backend alembic upgrade head
+```
+
+### Step 6: Download the LLM
+The Ollama container boots up empty. You must pull the `llama3` model before starting your first meeting:
+```bash
+docker compose exec ollama ollama run llama3
+```
+(Once it says "success", type `/bye` to exit).
+
+You are now ready to hit `POST /api/meetings/start`!
 
 ## Typical Flow
 
@@ -132,6 +148,10 @@ Add the following to expose Ollama to the Docker bridge:
 Environment="OLLAMA_HOST=0.0.0.0"
 ```
 Then restart the service: `sudo systemctl daemon-reload && sudo systemctl restart ollama`
+
+### 3. WebSocket "4401" Unauthorized Errors
+If the Vexa API Gateway rejects the WebSocket connection, ensure your WebSocket client passes the API key as a URL parameter rather than a header, as Python websockets can strip headers across Docker bridges:
+`ws://host.docker.internal:8056/ws?api_key=your_key_here`
 
 ## Development Workflow
 
