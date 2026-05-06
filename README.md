@@ -106,18 +106,51 @@ You are now ready to hit `POST /api/meetings/start`!
 
 - Root Compose warning about `version` was removed from `docker-compose.yml`.
 - For secure deployments, move secrets (API keys, DB credentials) to environment files or secret managers.
-- This repo may include submodules; update them with:
-  - `git submodule update --init --recursive`
+### Working with Submodules
 
-### Submodule Sync Alias
+> ⚠️ **All submodule commands must be run from the monolith root** (`meetingmind-ai/`), never from inside a submodule directory.
 
-To simplify syncing submodules to their latest commits and pushing those changes to the main repository, you can set up a git alias:
+#### First-time setup (after clone or pull)
+
+Initialize and download all submodule contents:
+
+```bash
+git submodule update --init --recursive
+```
+
+Or clone with submodules in one step:
+
+```bash
+git clone --recurse-submodules https://github.com/MeetingMind-AI/meetingmind-ai.git
+```
+
+#### Pull the latest changes from each subrepo
+
+Fetch the latest `main` branch commits from each submodule's remote:
+
+```bash
+git submodule update --remote
+```
+
+#### Commit and push updated submodule pointers
+
+After pulling subrepo updates, the monolith tracks new commit hashes. Commit and push them:
+
+```bash
+git add backend frontend vexa
+git commit -m "Update submodules to latest commits"
+git push origin main
+```
+
+#### One-command sync alias (optional)
+
+Set up a git alias to pull, commit, and push submodule updates in one step:
 
 ```bash
 git config --global alias.sync-modules '!git submodule update --remote && git add . && git commit -m "Auto-synced submodules to latest commits" && git push origin main'
 ```
 
-Then, you can sync all submodules with a single command:
+Then run from the monolith root:
 
 ```bash
 git sync-modules
