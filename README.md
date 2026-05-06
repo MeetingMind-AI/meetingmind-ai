@@ -10,7 +10,7 @@ This repository orchestrates two main zones:
 ## Architecture
 
 - **Sensor Zone (`vexa/`)**
-  - Runs the Vexa bot stack locally.
+  - Runs the Vexa bot stack locally (Supports both CPU and GPU setups).
   - Exposes:
     - API Gateway: `http://localhost:8056`
     - Admin API: `http://localhost:8057`
@@ -19,6 +19,7 @@ This repository orchestrates two main zones:
   - FastAPI service on `http://localhost:8000`
   - PostgreSQL + Redis
   - Ollama endpoint (local): `http://host.docker.internal:11434`
+  - Uses fully merged, clean transcripts via Vexa REST API polling
 
 ## Repository Layout
 
@@ -39,8 +40,32 @@ This repository orchestrates two main zones:
 This project requires two zones to be running: **The Sensor Zone** (Vexa) and **The Brain Zone** (MeetingMind Backend).
 
 ### Step 1: Start Vexa (The Sensor Zone)
-Navigate to the Vexa directory and start the headless bot infrastructure:
+Navigate to the Vexa directory (`cd vexa`). Depending on your hardware, configure Vexa before starting it.
+
+#### For macOS / CPU Only:
+1. Edit `vexa/.env` and set:
+   ```env
+   LOCAL_TRANSCRIPTION=true
+   TRANSCRIPTION_SERVICE_URL=http://host.docker.internal:8083/v1/audio/transcriptions
+   TRANSCRIPTION_SERVICE_TOKEN=local
+   ```
+2. Edit `vexa/deploy/compose/Makefile` to use `docker-compose.cpu.yml` for the transcription service.
+3. Edit `vexa/services/transcription-service/nginx.conf` and comment out worker 2 and 3.
+
+#### For Linux / Nvidia GPU:
+1. Ensure Nvidia Container Toolkit is installed.
+2. Edit `vexa/.env` and set:
+   ```env
+   LOCAL_TRANSCRIPTION=true
+   TRANSCRIPTION_SERVICE_URL=http://172.17.0.1:8083/v1/audio/transcriptions
+   TRANSCRIPTION_SERVICE_TOKEN=local
+   ```
+3. Keep the default `Makefile` and `nginx.conf` configurations (they use the GPU by default).
+
+**Start the stack:**
 ```bash
+# Pull the bot image first to prevent 404s
+docker pull vexaai/vexa-bot:latest
 make all
 ```
 
@@ -98,9 +123,9 @@ You are now ready to hit `POST /api/meetings/start`!
 
 1. Start meeting bot:
    - `POST /api/meetings/start`
-2. Backend subscribes to transcript + status events.
-3. Live transcript lines are logged while meeting is active.
-4. On completion, backend performs final transcript sync and generates final markdown report.
+2. Backend polls the Vexa REST API (`GET /transcripts/{platform}/{native_id}`) periodically for clean, pause-ignored transcript segments.
+3. Live transcript lines are logged and inserted into the database.
+4. On completion, backend performs final transcript sync and generates final markdown report using Ollama.
 
 ## Operational Notes
 
