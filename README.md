@@ -92,6 +92,19 @@ docker compose exec ollama ollama run llama3
 ```
 (Once it says "success", type `/bye` to exit).
 
+### Ollama Parallel Requests
+The Ollama service is configured with `OLLAMA_NUM_PARALLEL=2`, allowing it to process up to **2 concurrent inference requests** per loaded model. In this case, the TECH LEAD and PM bots can run in parallel.
+
+Each parallel slot allocates additional GPU/CPU memory for the KV cache. For `llama3` (8B), expect roughly **1–2 GB of extra memory per slot**. To adjust the concurrency level, change the `OLLAMA_NUM_PARALLEL` value in `docker-compose.yml`:
+
+```yaml
+ollama:
+  environment:
+    OLLAMA_NUM_PARALLEL: "2"   # increase or decrease based on available memory
+```
+
+Requests beyond the parallel limit are queued automatically (up to 512 by default).
+
 You are now ready to hit `POST /api/meetings/start`!
 
 ## Typical Flow

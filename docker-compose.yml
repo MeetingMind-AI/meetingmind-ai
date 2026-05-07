@@ -60,6 +60,8 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: meetingmind_ollama
+    environment:
+      OLLAMA_NUM_PARALLEL: "2"
     ports:
       - "11434:11434"
     volumes:
