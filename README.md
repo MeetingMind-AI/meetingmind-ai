@@ -18,8 +18,8 @@ This repository orchestrates two main zones:
 - **Brain Zone (`backend/`)**
   - FastAPI service on `http://localhost:8000`
   - PostgreSQL + Redis
-  - Ollama endpoint (local): `http://host.docker.internal:11434`
-  - Uses fully merged, clean transcripts via Vexa REST API polling
+  - Ollama container on `http://ollama:11434` (accessible within the Docker network)
+  - Uses fully merged, clean transcripts via Vexa REST API polling (WebSocket ingestion removed)
 
 ## Repository Layout
 
@@ -32,7 +32,7 @@ This repository orchestrates two main zones:
 
 - Docker + Docker Compose
 - Python 3.11+ (if running services outside Docker)
-- Ollama running locally with model available (for example `llama3`)
+- Ollama model pulled inside the Docker container (see Step 6)
 - Vexa stack running locally (from `vexa/`)
 
 ## 🚀 Quickstart & Deployment
@@ -226,3 +226,4 @@ git submodule update --init --recursive
 - Backend code: `backend/app`
 - Run backend tests/checks as available per module
 - Keep API changes documented in `backend/README.md`
+- `test_env.py`: utility for validating float environment variable parsing (e.g. `OLLAMA_TIMEOUT_SECONDS`)
