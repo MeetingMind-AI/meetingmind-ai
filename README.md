@@ -10,7 +10,7 @@ This repository orchestrates two main zones:
 ## Architecture
 
 - **Sensor Zone (`vexa/`)**
-  - Runs the Vexa bot stack locally.
+  - Runs the Vexa bot stack locally (Supports both CPU and GPU setups).
   - Exposes:
     - API Gateway: `http://localhost:8056`
     - Admin API: `http://localhost:8057`
@@ -18,7 +18,8 @@ This repository orchestrates two main zones:
 - **Brain Zone (`backend/`)**
   - FastAPI service on `http://localhost:8000`
   - PostgreSQL + Redis
-  - Ollama endpoint (local): `http://host.docker.internal:11434`
+  - Ollama container on `http://ollama:11434` (accessible within the Docker network)
+  - Uses fully merged, clean transcripts via Vexa REST API polling (WebSocket ingestion removed)
 
 ## Repository Layout
 
@@ -31,7 +32,7 @@ This repository orchestrates two main zones:
 
 - Docker + Docker Compose
 - Python 3.11+ (if running services outside Docker)
-- Ollama running locally with model available (for example `llama3`)
+- Ollama model pulled inside the Docker container (see Step 6)
 - Vexa stack running locally (from `vexa/`)
 
 ## 🚀 Quickstart & Deployment
@@ -39,13 +40,45 @@ This repository orchestrates two main zones:
 This project requires two zones to be running: **The Sensor Zone** (Vexa) and **The Brain Zone** (MeetingMind Backend).
 
 ### Step 1: Start Vexa (The Sensor Zone)
-Navigate to the Vexa directory and start the headless bot infrastructure:
+Navigate to the Vexa directory (`cd vexa`). Depending on your hardware, configure Vexa before starting it.
+
+#### For macOS / CPU Only:
+1. Edit `vexa/.env` and set:
+   ```env
+   LOCAL_TRANSCRIPTION=true
+   TRANSCRIPTION_SERVICE_URL=http://host.docker.internal:8083/v1/audio/transcriptions
+   TRANSCRIPTION_SERVICE_TOKEN=local
+   ```
+2. Edit `vexa/deploy/compose/Makefile` to use `docker-compose.cpu.yml` for the transcription service.
+3. Edit `vexa/services/transcription-service/nginx.conf` and comment out worker 2 and 3.
+
+#### For Linux / Nvidia GPU:
+1. Ensure Nvidia Container Toolkit is installed.
+2. Edit `vexa/.env` and set:
+   ```env
+   LOCAL_TRANSCRIPTION=true
+   TRANSCRIPTION_SERVICE_URL=http://172.17.0.1:8083/v1/audio/transcriptions
+   TRANSCRIPTION_SERVICE_TOKEN=local
+   ```
+3. Keep the default `Makefile` and `nginx.conf` configurations (they use the GPU by default).
+
+**Start the stack:**
 ```bash
+# Pull the bot image first to prevent 404s
+docker pull vexaai/vexa-bot:latest
 make all
 ```
 
 ### Step 2: Mint your Vexa API Key
 To allow the backend to dispatch bots, you must mint an API Key from Vexa's Admin API.
+
+**Option A — Via the Vexa Dashboard (recommended):**
+Open `http://localhost:3001` in your browser to access the Vexa Dashboard. From there you can:
+- Generate API keys under the settings/admin section.
+- Launch test meetings to verify Vexa is working.
+- Monitor bot status and view live transcripts in real time.
+
+**Option B — Via the Admin API (curl):**
 
 **Create a User:**
 ```bash
@@ -66,10 +99,9 @@ curl -X POST "http://localhost:8057/admin/users/1/tokens" \
 Copy the long string inside the "token" field from the response.
 
 ### Step 3: Configure the Backend (The Brain Zone)
-In the root of the `backend/` directory, create a `.env` file and add your newly minted key:
-```env
-# Do not use quotes or trailing spaces
-VEXA_API_KEY=your_long_token_string_here
+Replace the placeholder `VEXA_API_KEY` value in `docker-compose.yml` at the monorepo root with your newly minted key:
+```yaml
+VEXA_API_KEY: your_long_token_string_here
 ```
 
 ### Step 4: Boot the System
@@ -111,9 +143,9 @@ You are now ready to hit `POST /api/meetings/start`!
 
 1. Start meeting bot:
    - `POST /api/meetings/start`
-2. Backend subscribes to transcript + status events.
-3. Live transcript lines are logged while meeting is active.
-4. On completion, backend performs final transcript sync and generates final markdown report.
+2. Backend polls the Vexa REST API (`GET /transcripts/{platform}/{native_id}`) periodically for clean, pause-ignored transcript segments.
+3. Live transcript lines are logged and inserted into the database.
+4. On completion, backend performs final transcript sync and generates final markdown report using Ollama.
 
 ## Operational Notes
 
@@ -214,3 +246,4 @@ git submodule update --init --recursive
 - Backend code: `backend/app`
 - Run backend tests/checks as available per module
 - Keep API changes documented in `backend/README.md`
+- `test_env.py`: utility for validating float environment variable parsing (e.g. `OLLAMA_TIMEOUT_SECONDS`)
