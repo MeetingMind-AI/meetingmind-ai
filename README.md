@@ -72,6 +72,14 @@ make all
 ### Step 2: Mint your Vexa API Key
 To allow the backend to dispatch bots, you must mint an API Key from Vexa's Admin API.
 
+**Option A — Via the Vexa Dashboard (recommended):**
+Open `http://localhost:3001` in your browser to access the Vexa Dashboard. From there you can:
+- Generate API keys under the settings/admin section.
+- Launch test meetings to verify Vexa is working.
+- Monitor bot status and view live transcripts in real time.
+
+**Option B — Via the Admin API (curl):**
+
 **Create a User:**
 ```bash
 curl -X POST "http://localhost:8057/admin/users" \
@@ -91,10 +99,9 @@ curl -X POST "http://localhost:8057/admin/users/1/tokens" \
 Copy the long string inside the "token" field from the response.
 
 ### Step 3: Configure the Backend (The Brain Zone)
-In the root of the `backend/` directory, create a `.env` file and add your newly minted key:
-```env
-# Do not use quotes or trailing spaces
-VEXA_API_KEY=your_long_token_string_here
+Replace the placeholder `VEXA_API_KEY` value in `docker-compose.yml` at the monorepo root with your newly minted key:
+```yaml
+VEXA_API_KEY: your_long_token_string_here
 ```
 
 ### Step 4: Boot the System
