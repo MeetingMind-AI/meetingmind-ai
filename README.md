@@ -145,7 +145,56 @@ You are now ready to hit `POST /api/meetings/start`!
    - `POST /api/meetings/start`
 2. Backend polls the Vexa REST API (`GET /transcripts/{platform}/{native_id}`) periodically for clean, pause-ignored transcript segments.
 3. Live transcript lines are logged and inserted into the database.
-4. On completion, backend performs final transcript sync and generates final markdown report using Ollama.
+4. On completion, backend performs final transcript sync and runs the multi-persona report pipeline:
+   - **Initial Analysis**: Tech Lead + Product Manager analyze the transcript independently (parallel)
+   - **Discussion Rounds**: Tech Lead ↔ Product Manager debate each other's findings (configurable rounds)
+   - **Final Synthesis**: Scrum Master receives all analyses + the full debate and produces the final JSON report
+
+## 🤖 Multi-Persona Discussion System
+
+The final report is generated through a structured debate between AI personas, not a single-shot summary.
+
+### Architecture
+
+```
+Transcript
+    │
+    ├── Tech Lead (initial analysis)      ──┐
+    │                                       ├── Discussion Rounds (TL ↔ PM)
+    └── Product Manager (initial analysis) ──┘
+                                               │
+                                               ▼
+                                    Scrum Master (final synthesis)
+```
+
+| Component | Class | File | Responsibility |
+|---|---|---|---|
+| LLM Client | `OllamaClient` | `engine/controller.py` | HTTP calls to Ollama |
+| Discussion | `DiscussionEngine` | `engine/controller.py` | TL ↔ PM debate orchestration |
+| Prompt Builder | `ReportPromptBuilder` | `engine/controller.py` | Assembles SM synthesis prompt |
+| Transcript | `TranscriptLoader` | `engine/controller.py` | Reads chunks from DB |
+| Orchestrator | `ControllerAgent` | `engine/controller.py` | Ties everything together |
+
+### Discussion Format
+
+During each round, the Tech Lead and Product Manager respond with:
+- **Agreements** — Points they confirm from the other persona
+- **Challenges** — Points they disagree with (with reasoning)
+- **Additions** — New insights surfaced by the debate
+- **Refined Position** — Updated assessment incorporating feedback
+
+### Configuration
+
+The number of discussion rounds is controlled by the `num_rounds` parameter on `generate_final_report()`:
+
+| `num_rounds` | Behavior | LLM Calls |
+|---|---|---|
+| `0` | No discussion (original behavior) | 3 |
+| `1` (default) | One round of TL ↔ PM debate | 5 |
+| `2` | Two rounds | 7 |
+| `N` | N rounds | 2 + 2N + 1 |
+
+The default is set via `DEFAULT_DISCUSSION_ROUNDS` in `engine/controller.py`.
 
 ## Operational Notes
 
