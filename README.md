@@ -195,33 +195,33 @@ MEM0_SEARCH_ENABLED=true
 docker compose exec backend python - <<'PY'
 from mem0 import Memory
 
- config = {
-     "vector_store": {
-         "provider": "qdrant",
-         "config": {
-             "collection_name": "meetingmind",
-             "embedding_model_dims": 768,
-         }
-     },
-     "llm": {
-         "provider": "ollama",
-         "config": {
-             "model": "llama3.1",
-             "ollama_base_url": "http://ollama:11434",
-             "temperature": 0.1,
-         },
-     },
-     "embedder": {
-         "provider": "ollama",
-         "config": {
-             "model": "nomic-embed-text",
-             "ollama_base_url": "http://ollama:11434",
-         },
-     },
- }
+config = {
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {
+            "collection_name": "meetingmind",
+            "embedding_model_dims": 768,
+        }
+    },
+    "llm": {
+        "provider": "ollama",
+        "config": {
+            "model": "llama3.1",
+            "ollama_base_url": "http://ollama:11434",
+            "temperature": 0.1,
+        },
+    },
+    "embedder": {
+        "provider": "ollama",
+        "config": {
+            "model": "nomic-embed-text",
+            "ollama_base_url": "http://ollama:11434",
+        },
+    },
+}
 
 memory = Memory.from_config(config)
- print(memory.search("Tech Lead findings", filters={"user_id": "team_agile"}))
+print(memory.search("Tech Lead findings", filters={"user_id": "team_agile"}))
 PY
 ```
 
