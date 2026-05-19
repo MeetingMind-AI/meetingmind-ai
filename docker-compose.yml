@@ -36,7 +36,7 @@ services:
       VEXA_WS_URL: ws://host.docker.internal:8056/ws
       VEXA_API_KEY: vxa_bot_oGV19ZTQGNKoxIGoN9U4dPaQIKgIJneRZCHs07Fz
       OLLAMA_URL: http://ollama:11434/api/generate
-      OLLAMA_MODEL: llama3
+      OLLAMA_MODEL: llama3.1
       OLLAMA_TIMEOUT_SECONDS: "120"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -64,6 +64,8 @@ services:
     container_name: meetingmind_ollama
     environment:
       OLLAMA_NUM_PARALLEL: "2"
+      OLLAMA_KV_CACHE_TYPE: "q8_0"
+      OLLAMA_MAX_VRAM: "16384"
     ports:
       - "11434:11434"
     volumes:
