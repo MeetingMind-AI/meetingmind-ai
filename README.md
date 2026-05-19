@@ -162,15 +162,15 @@ You are now ready to hit `POST /api/meetings/start`!
 
 ## Semantic Memory (Mem0)
 
-Mem0 is wired into the final report pipeline to give cross-meeting continuity using Ollama for both LLM and embeddings (no OpenAI key required unless you reconfigure it):
+ Mem0 is wired into the final report pipeline to give cross-meeting continuity using Ollama for both LLM and embeddings (no OpenAI key required unless you reconfigure it):
 
 - Before initial analysis, the backend searches Mem0 using the first 1000 characters of the transcript (fallback: "General agile meeting") and injects the results into the prompt context.
 - After the report is generated, Tech Lead, Product Manager, and Scrum Master findings are saved into Mem0 under `user_id="team_agile"`.
 - The frontend does not call Mem0 directly; memory influences the backend summaries only.
 
-### Configuration
+ ### Configuration
 
-Mem0 is enabled by default and can be tuned via environment variables:
+ Mem0 is enabled by default and can be tuned via environment variables:
 
 ```env
 MEM0_ENABLED=true
@@ -181,7 +181,9 @@ MEM0_SAVE_ENABLED=true
 MEM0_SEARCH_ENABLED=true
 ```
 
-To minimize GPU/VRAM contention with user-facing AI work, you can disable memory search and/or saving, or point Mem0 to a separate Ollama instance (CPU-only) via `MEM0_OLLAMA_URL`.
+ To minimize GPU/VRAM contention with user-facing AI work, you can disable memory search and/or saving, or point Mem0 to a separate Ollama instance (CPU-only) via `MEM0_OLLAMA_URL`.
+
+ When using local models, Mem0 requires explicit vector dimensions. This project pins the embedding dimensions to 768 (matching `nomic-embed-text`).
 
 ### Testing Mem0
 
@@ -193,26 +195,33 @@ To minimize GPU/VRAM contention with user-facing AI work, you can disable memory
 docker compose exec backend python - <<'PY'
 from mem0 import Memory
 
-config = {
-    "llm": {
-        "provider": "ollama",
-        "config": {
-            "model": "llama3.1",
-            "ollama_base_url": "http://ollama:11434",
-            "temperature": 0.1,
-        },
-    },
-    "embedder": {
-        "provider": "ollama",
-        "config": {
-            "model": "nomic-embed-text",
-            "ollama_base_url": "http://ollama:11434",
-        },
-    },
-}
+ config = {
+     "vector_store": {
+         "provider": "qdrant",
+         "config": {
+             "collection_name": "meetingmind",
+             "embedding_model_dims": 768,
+         }
+     },
+     "llm": {
+         "provider": "ollama",
+         "config": {
+             "model": "llama3.1",
+             "ollama_base_url": "http://ollama:11434",
+             "temperature": 0.1,
+         },
+     },
+     "embedder": {
+         "provider": "ollama",
+         "config": {
+             "model": "nomic-embed-text",
+             "ollama_base_url": "http://ollama:11434",
+         },
+     },
+ }
 
 memory = Memory.from_config(config)
-print(memory.search("Tech Lead findings", user_id="team_agile"))
+ print(memory.search("Tech Lead findings", filters={"user_id": "team_agile"}))
 PY
 ```
 
