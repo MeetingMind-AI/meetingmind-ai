@@ -34,7 +34,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       VEXA_API_URL: http://host.docker.internal:8056/bots
       VEXA_WS_URL: ws://host.docker.internal:8056/ws
-      VEXA_API_KEY: vxa_bot_oGV19ZTQGNKoxIGoN9U4dPaQIKgIJneRZCHs07Fz
+      VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: llama3.1
       OLLAMA_TIMEOUT_SECONDS: "120"

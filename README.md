@@ -101,9 +101,9 @@ curl -X POST "http://localhost:8057/admin/users/1/tokens" \
 Copy the long string inside the "token" field from the response.
 
 ### Step 3: Configure the Backend (The Brain Zone)
-Replace the placeholder `VEXA_API_KEY` value in `docker-compose.yml` at the monorepo root with your newly minted key:
-```yaml
-VEXA_API_KEY: your_long_token_string_here
+Set your newly minted key in the root `.env` file so `docker-compose.yml` can load it via interpolation:
+```env
+VEXA_API_KEY=your_long_token_string_here
 ```
 
 ### Step 4: Boot the System
