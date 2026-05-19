@@ -38,6 +38,12 @@ services:
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: llama3.1
       OLLAMA_TIMEOUT_SECONDS: "120"
+      MEM0_ENABLED: "true"
+      MEM0_SEARCH_ENABLED: "true"
+      MEM0_SAVE_ENABLED: "true"
+      MEM0_OLLAMA_URL: http://ollama:11434
+      MEM0_LLM_MODEL: llama3.1
+      MEM0_EMBED_MODEL: nomic-embed-text
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
