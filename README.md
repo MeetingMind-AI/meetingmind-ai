@@ -44,6 +44,12 @@ This project requires two zones to be running: **The Sensor Zone** (Vexa) and **
 ### Step 1: Start Vexa (The Sensor Zone)
 Navigate to the Vexa directory (`cd vexa`). Depending on your hardware, configure Vexa before starting it.
 
+Start by copying the Vexa env example and setting the required fields:
+
+```bash
+cp vexa/deploy/env-example vexa/.env
+```
+
 #### For macOS / CPU Only:
 1. Edit `vexa/.env` and set:
    ```env
@@ -323,6 +329,56 @@ Then run from the monolith root:
 
 ```bash
 git sync-modules
+```
+
+## 🤖 Vexa Submodule: Troubleshooting & Updates
+
+Vexa is a highly integrated piece of architecture that interacts directly with our host VM. Because of this, standard Docker commands can sometimes cause unexpected issues. Follow these guides to resolve crashes and safely apply updates.
+
+### ⚠️ Scenario A: The System Crashed After a VM Reboot
+
+If the server is rebooted, the `runtime-api` container will almost always enter a crash loop (`Restarting`). You will see a `500 Failed to start bot container` error in the Swagger UI.
+
+**The Cause:** Linux resets the permissions on `/var/run/docker.sock` upon startup. The `runtime-api` orchestrator needs access to this socket to spawn the headless browser bots, but gets a `Permission denied` error and crashes.
+
+**The Fix (Do NOT rebuild or pull images):**
+Simply grant permission to the socket and restart the orchestrator.
+
+```bash
+sudo chmod 666 /var/run/docker.sock
+docker compose -f vexa/deploy/compose/docker-compose.yml restart runtime-api
+```
+
+### 🔄 Scenario B: Safely Updating to a New Release
+
+Never update Vexa using standard `docker compose pull` commands (including `IMAGE_TAG=... docker compose pull`). Upstream changes frequently introduce new required `.env` variables and database schema changes. Attempting to pull latest without updating the environment will break the stack.
+
+Always use the official Makefile and pin to a specific release tag.
+
+**Step 1: Shut Down and Sync the Submodule**
+Always pull a specific release tag, never the main branch.
+
+```bash
+# Safely shut down to release file locks
+docker compose -f vexa/deploy/compose/docker-compose.yml down
+
+# Fetch all tags directly from the upstream repository
+git -C vexa fetch origin --tags
+
+# Checkout the specific version (e.g., vexa-0.10.6+2)
+git -C vexa checkout <exact-tag-name>
+```
+
+(Note: If Git throws a pathspec error, your fork is outdated. Sync your fork on GitHub first, or run `git fetch https://github.com/Vexa-ai/vexa.git --tags`).
+
+**Step 2: Update your `.env`**
+Compare your `vexa/.env` with `vexa/deploy/env-example` and merge any new required variables before restarting. Do not carry forward an older `.env` without adding newly introduced keys.
+
+**Step 3: Start Vexa**
+Use the Makefile for your chosen deployment mode:
+
+```bash
+make all
 ```
 
 ## 🛠 Troubleshooting (Linux VM Environments)
