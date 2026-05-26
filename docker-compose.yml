@@ -58,6 +58,7 @@ services:
     container_name: meetingmind_frontend
     ports:
       - "3000:80"
+      - "443:443"
     environment:
       - BACKEND_URL=http://backend:8000
     depends_on:
