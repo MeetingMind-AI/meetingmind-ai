@@ -165,6 +165,7 @@ You are now ready to hit `POST /api/meetings/start`!
     - **Initial Analysis**: Tech Lead + Product Manager analyze the transcript independently (parallel)
     - **Discussion Rounds**: Tech Lead ↔ Product Manager debate each other's findings (configurable rounds)
     - **Final Synthesis**: Scrum Master receives all analyses + the full debate and produces the final JSON report
+    - This final report pipeline runs in the background after `POST /api/meetings/{meeting_id}/leave` returns `202 Accepted`.
 
 ## Semantic Memory (Mem0)
 
@@ -173,6 +174,7 @@ You are now ready to hit `POST /api/meetings/start`!
 - Before initial analysis, the backend searches Mem0 using the first 1000 characters of the transcript (fallback: "General agile meeting") and injects the results into the prompt context.
 - After the report is generated, Tech Lead, Product Manager, and Scrum Master findings are saved into Mem0 under `user_id="team_{team_id}"` (fallback `global_team` when no team ID is provided).
 - The frontend does not call Mem0 directly; memory influences the backend summaries only.
+- Instant Clarity explanations are cached for 60 seconds using Redis by hashed prompt (transcript context + persona).
 
  ### Configuration
 
