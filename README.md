@@ -171,7 +171,7 @@ You are now ready to hit `POST /api/meetings/start`!
  Mem0 is wired into the final report pipeline to give cross-meeting continuity using Ollama for both LLM and embeddings (no OpenAI key required unless you reconfigure it):
 
 - Before initial analysis, the backend searches Mem0 using the first 1000 characters of the transcript (fallback: "General agile meeting") and injects the results into the prompt context.
-- After the report is generated, Tech Lead, Product Manager, and Scrum Master findings are saved into Mem0 under `user_id="team_agile"`.
+- After the report is generated, Tech Lead, Product Manager, and Scrum Master findings are saved into Mem0 under `user_id="team_{team_id}"` (fallback `global_team` when no team ID is provided).
 - The frontend does not call Mem0 directly; memory influences the backend summaries only.
 
  ### Configuration
@@ -227,7 +227,7 @@ config = {
 }
 
 memory = Memory.from_config(config)
-print(memory.search("Tech Lead findings", filters={"user_id": "team_agile"}))
+print(memory.search("Tech Lead findings", filters={"user_id": "team_1"}))
 PY
 ```
 
