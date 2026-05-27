@@ -40,6 +40,8 @@ services:
       - postgres
       - redis
       - qdrant
+    volumes:
+      - hf_cache:/home/appuser/.cache
     environment:
       DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
       REDIS_URL: redis://redis:6379/0
@@ -104,6 +106,7 @@ volumes:
   postgres_data:
   ollama_data:
   qdrant_data:
+  hf_cache:
 
 networks:
   meetingmind_network:
