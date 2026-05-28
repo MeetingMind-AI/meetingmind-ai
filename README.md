@@ -118,14 +118,34 @@ Start the backend, database, and local LLM containers:
 docker compose up -d
 ```
 
-### Step 5: Initialize the Database
+### Step 5: Access the Web UI
+
+Once the containers are up, open the app in your browser:
+
+| Scenario | URL |
+|---|---|
+| Running on your local machine | `http://localhost:3000` |
+| Accessing a remote Linux server / VM | `https://<server-ip>` |
+
+> **Why does the browser show "Not Secure"?**
+>
+> The frontend container generates a **self-signed SSL certificate** at build time. Because it is not signed by a trusted Certificate Authority, browsers flag it as untrusted. This is expected behaviour for a self-hosted POC — the connection is still encrypted.
+>
+> **To accept the certificate and proceed (one-time per browser):**
+> - **Chrome / Edge**: Click **Advanced** → **Proceed to \<address\> (unsafe)**
+> - **Firefox**: Click **Advanced…** → **Accept the Risk and Continue**
+> - **Safari**: Click **Show Details** → **visit this website**
+>
+> **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
+
+### Step 7: Initialize the Database
 Because this relies on a local PostgreSQL container, you must generate the tables on the first run:
 ```bash
 docker compose exec backend alembic revision --autogenerate -m "initial_tables"
 docker compose exec backend alembic upgrade head
 ```
 
-### Step 6: Download the LLM
+### Step 8: Download the LLM
 The Ollama container boots up empty. You must pull the `llama3.1` model before starting your first meeting:
 ```bash
 docker compose exec ollama ollama run llama3.1
