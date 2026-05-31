@@ -32,10 +32,25 @@ This repository orchestrates two main zones:
 ## Prerequisites
 
 - Docker + Docker Compose
+- NVIDIA Container Toolkit (Linux GPU hosts)
 - Python 3.11+ (if running services outside Docker)
 - Mem0 configuration (defaults to Ollama; see Semantic Memory section)
 - Ollama model pulled inside the Docker container (see Step 6)
 - Vexa stack running locally (from `vexa/`)
+- Enable NVIDIA Persistence Mode on the host to prevent GPU power-down latency spikes:
+  ```bash
+  sudo nvidia-smi -pm 1
+  ```
+  This keeps the driver and GPU awake between transcript chunks, avoiding cold-start delays.
+
+## Hardware & Performance Tuning (Linux + NVIDIA)
+
+The root `docker-compose.yml` applies several Linux-specific optimizations for a 16GB NVIDIA A2 GPU:
+
+- **VRAM utilization:** `OLLAMA_NUM_PARALLEL: "2"` is tuned for 16GB cards so the Tech Lead and Product Manager agents can run in parallel using Llama 3.1 8B (`q4_K_M`) plus `nomic-embed-text` without hitting OOM.
+- **Model eviction:** `OLLAMA_KEEP_ALIVE="60s"` aggressively clears idle models from VRAM after a meeting ends, keeping host resources free.
+- **Shared memory:** `shm_size: '2gb'` is set on both `ollama` and `postgres` to prevent Linux bus errors during heavy tensor mutations and database workloads.
+- **OOM killer protection:** `oom_score_adj: -500` is applied to PostgreSQL so the kernel is less likely to terminate the database under RAM pressure.
 
 ## 🚀 Quickstart & Deployment
 
