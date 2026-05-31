@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:15
     container_name: meetingmind_postgres
+    shm_size: '2gb'
+    oom_score_adj: -500
     environment:
       POSTGRES_DB: meetingmind
       POSTGRES_USER: meetingmind
@@ -87,6 +89,8 @@ services:
       OLLAMA_NUM_PARALLEL: "2"
       OLLAMA_KV_CACHE_TYPE: "q8_0"
       OLLAMA_MAX_VRAM: "16384"
+      OLLAMA_KEEP_ALIVE: "60s"
+    shm_size: '2gb'
     ports:
       - "11434:11434"
     volumes:
