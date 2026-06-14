@@ -51,13 +51,14 @@ services:
       VEXA_WS_URL: ws://host.docker.internal:8056/ws
       VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
-      OLLAMA_MODEL: llama3.1
+      OLLAMA_MODEL: hermes3:8b
+      OLLAMA_FINAL_MODEL: qwen3.6:14b
       OLLAMA_TIMEOUT_SECONDS: "120"
       MEM0_ENABLED: "true"
       MEM0_SEARCH_ENABLED: "true"
       MEM0_SAVE_ENABLED: "true"
       MEM0_OLLAMA_URL: http://ollama:11434
-      MEM0_LLM_MODEL: llama3.1
+      MEM0_LLM_MODEL: hermes3:8b
       MEM0_EMBED_MODEL: nomic-embed-text
       MEM0_QDRANT_URL: http://qdrant:6333
     extra_hosts:
