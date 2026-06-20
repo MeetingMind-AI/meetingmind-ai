@@ -132,7 +132,7 @@ VEXA_API_URL=http://host.docker.internal:8056/bots
 VEXA_WS_URL=ws://host.docker.internal:8056/ws
 OLLAMA_URL=http://ollama:11434/api/generate
 OLLAMA_MODEL=hermes3:8b
-OLLAMA_FINAL_MODEL=qwen3.6:14b
+OLLAMA_FINAL_MODEL=qwen2.5:14b
 OLLAMA_TIMEOUT_SECONDS=120
 MEM0_ENABLED=true
 MEM0_SEARCH_ENABLED=true
@@ -213,7 +213,7 @@ EOF
 
   log_step "Pulling Ollama models"
   "${COMPOSE_CMD[@]}" exec -T ollama ollama pull hermes3:8b
-  "${COMPOSE_CMD[@]}" exec -T ollama ollama pull qwen3.6:14b
+  "${COMPOSE_CMD[@]}" exec -T ollama ollama pull qwen2.5:14b
   "${COMPOSE_CMD[@]}" exec -T ollama ollama pull nomic-embed-text
   log_ok "Ollama models pulled"
 

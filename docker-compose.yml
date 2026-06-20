@@ -52,7 +52,7 @@ services:
       VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: hermes3:8b
-      OLLAMA_FINAL_MODEL: qwen3.6:14b
+      OLLAMA_FINAL_MODEL: qwen2.5:14b
       OLLAMA_TIMEOUT_SECONDS: "120"
       MEM0_ENABLED: "true"
       MEM0_SEARCH_ENABLED: "true"
