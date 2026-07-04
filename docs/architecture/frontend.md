@@ -74,9 +74,10 @@ All routes except `/login` and `/join/:inviteToken` require authentication. Unau
 **Kanban / Parking Lot / To Schedule**
 - Data aggregated across all meetings from the AI final report
 - Filter by meeting
-- Drag-and-drop on Kanban board
-- Toggle parking lot items open/resolved
-- Date picker for scheduling follow-ups
+- **Manual Additions**: Use the "+ Add Task" / "+ Add Item" modal on any board to manually insert items, assign team members, and select a meeting association.
+- **Kanban Board**: Three columns (To-Do, In Progress, Done) with support for manually changing assignees via dropdown and moving tasks between columns natively.
+- **Parking Lot**: Toggle items open/resolved, and instantly "Promote to Task" to migrate them onto the Kanban board.
+- **Schedule**: Date picker added to assign explicit target dates seamlessly appended to the action text.
 
 **Demo mode**
 - Sidebar toggle loads sample data across all pages

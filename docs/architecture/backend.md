@@ -215,7 +215,10 @@ During live ingestion, the LLM detects three types of proposals from each uttera
 | `to_do` | A concrete action item assigned to someone |
 | `to_schedule` | A follow-up meeting, discussion, or sync that needs to be scheduled |
 
-- `GET /api/meetings/{meeting_id}/actions` — Lists all proposals for a meeting, grouped by type, then by status.
+- `GET /api/meetings/{meeting_id}/actions` — Lists all proposals for a meeting, grouped by type, then by status. Includes `assignee` information.
+- `POST /api/meetings/{meeting_id}/actions` — Manually create a new action (`parking_lot`, `to_do`, or `to_schedule`) with optional `assignee_id`.
+- `PATCH /api/meetings/{meeting_id}/actions/{action_id}` — Update an action's `status`, `content`, `assignee_id`, or `action_type`.
+
   ```json
   {
     "parking_lot": {
@@ -223,16 +226,24 @@ During live ingestion, the LLM detects three types of proposals from each uttera
         {
           "id": 1,
           "agent_role": "scrum_master",
+          "action_type": "parking_lot",
           "content": "New framework discussion deferred to later.",
-          "status": "pending"
+          "status": "pending",
+          "assignee": null
         }
       ],
       "accepted": [
         {
           "id": 2,
           "agent_role": "scrum_master",
+          "action_type": "parking_lot",
           "content": "Disagrees with Bob on OAuth approach.",
-          "status": "accepted"
+          "status": "accepted",
+          "assignee": {
+            "id": 5,
+            "name": "Alice",
+            "photo_url": "/api/auth/photo/5"
+          }
         }
       ],
       "rejected": []
@@ -242,8 +253,10 @@ During live ingestion, the LLM detects three types of proposals from each uttera
         {
           "id": 3,
           "agent_role": "scrum_master",
+          "action_type": "to_do",
           "content": "Alice to update the API documentation.",
-          "status": "pending"
+          "status": "pending",
+          "assignee": null
         }
       ],
       "accepted": [],
