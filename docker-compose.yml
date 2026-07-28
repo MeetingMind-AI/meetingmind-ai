@@ -47,8 +47,8 @@ services:
     environment:
       DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
       REDIS_URL: redis://redis:6379/0
-      VEXA_API_URL: http://host.docker.internal:18056/bots
-      VEXA_WS_URL: ws://host.docker.internal:18056/ws
+      VEXA_API_URL: http://vexa-v012-gateway-1:8000/bots
+      VEXA_WS_URL: ws://vexa-v012-gateway-1:8000/ws
       VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: hermes3:8b
@@ -67,6 +67,7 @@ services:
       - "8000:8000"
     networks:
       - meetingmind_network
+      - vexa_net
 
   frontend:
     build:
@@ -116,3 +117,6 @@ volumes:
 networks:
   meetingmind_network:
     driver: bridge
+  vexa_net:
+    external: true
+    name: vexa-v012_vexa
