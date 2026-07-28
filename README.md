@@ -42,93 +42,38 @@ See the full documentation index in [docs/README.md](docs/README.md).
 
 ## 🚀 Quickstart & Deployment
 
-This project requires two zones to be running: **The Sensor Zone** (Vexa) and **The Brain Zone** (MeetingMind Backend).
+We provide an automated setup script that handles dependencies, the Vexa bot, database migrations, and LLM pulls.
 
-### Step 1: Start Vexa (The Sensor Zone)
-Navigate to the Vexa directory (`cd vexa`). Depending on your hardware, configure Vexa before starting it.
+### 1. Run the Setup Script
 
-Start by copying the Vexa env example and setting the required fields:
-
+To perform a complete setup interactively:
 ```bash
-cp vexa/deploy/env-example vexa/.env
+./setup.sh
 ```
 
-#### For macOS / CPU Only:
-1. Edit `vexa/.env` and set:
-   ```env
-   LOCAL_TRANSCRIPTION=true
-   TRANSCRIPTION_SERVICE_URL=http://host.docker.internal:8083/v1/audio/transcriptions
-   TRANSCRIPTION_SERVICE_TOKEN=local
-   ```
-2. Edit `vexa/deploy/compose/Makefile` to use `docker-compose.cpu.yml` for the transcription service.
-3. Edit `vexa/services/transcription-service/nginx.conf` and comment out worker 2 and 3.
-
-#### For Linux / Nvidia GPU:
-1. Ensure Nvidia Container Toolkit is installed.
-2. Edit `vexa/.env` and set:
-   ```env
-   LOCAL_TRANSCRIPTION=true
-   TRANSCRIPTION_SERVICE_URL=http://172.17.0.1:8083/v1/audio/transcriptions
-   TRANSCRIPTION_SERVICE_TOKEN=local
-   ```
-3. Keep the default `Makefile` and `nginx.conf` configurations (they use the GPU by default).
-
-**Start the stack:**
+**Non-Interactive Mode:** 
+If you want to skip optional configuration prompts (like email alerts or Nvidia persistence mode), run:
 ```bash
-# Pull the bot image first to prevent 404s
-docker pull vexaai/vexa-bot:latest
-make all
+./setup.sh --non-interactive
 ```
 
-### Step 2: Mint your Vexa API Key
-To allow the backend to dispatch bots, you must mint an API Key from Vexa's Admin API.
+This script will:
+1. Generate the necessary `.env` files.
+2. Start the core database, Redis, and Qdrant containers.
+3. Start the Vexa transcription services.
+4. Mint a Vexa API key and link it to your backend.
+5. Boot the MeetingMind backend and frontend.
+6. Run PostgreSQL database migrations.
+7. Pull the required Ollama models.
 
-**Option A — Via the Vexa Dashboard (recommended):**
-Open `http://localhost:3001` in your browser to access the Vexa Dashboard. From there you can:
-- Generate API keys under the settings/admin section.
-- Launch test meetings to verify Vexa is working.
-- Monitor bot status and view live transcripts in real time.
+### 2. Access the Web UI
 
-**Option B — Via the Admin API (curl):**
-
-**Create a User:**
-```bash
-curl -X POST "http://localhost:8057/admin/users" \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-API-Key: changeme" \
-  -d '{"email": "bot@example.com", "name": "AI Assistant"}'
-```
-(Note the "id" returned in the JSON response, e.g., 1)
-
-**Generate the Key:**
-```bash
-curl -X POST "http://localhost:8057/admin/users/1/tokens" \
-  -H "Content-Type: application/json" \
-  -H "X-Admin-API-Key: changeme" \
-  -d '{"name": "Backend Key", "scopes": ["bot", "tx", "browser"]}'
-```
-Copy the long string inside the "token" field from the response.
-
-### Step 3: Configure the Backend (The Brain Zone)
-Set your newly minted key in the root `.env` file so `docker-compose.yml` can load it via interpolation:
-```env
-VEXA_API_KEY=your_long_token_string_here
-```
-
-### Step 4: Boot the System
-Start the backend, database, and local LLM containers:
-```bash
-docker compose up -d
-```
-
-### Step 5: Access the Web UI
-
-Once the containers are up, open the app in your browser:
+Once the setup completes and all containers are running, open the app in your browser:
 
 | Scenario | URL |
 |---|---|
 | Running on your local machine | `http://localhost:3000` |
-| Accessing a remote Linux server / VM | `https://<server-ip>` |
+| Accessing a remote server / VM | `https://<server-ip>` |
 
 > **Why does the browser show "Not Secure"?**
 >
@@ -141,22 +86,12 @@ Once the containers are up, open the app in your browser:
 >
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
 
-### Step 6: Initialize the Database
-Because this relies on a local PostgreSQL container, you must generate the tables on the first run:
-```bash
-docker compose exec backend alembic revision --autogenerate -m "initial_tables"
-docker compose exec backend alembic upgrade head
-```
+## 🔄 Updating Vexa
 
-### Step 7: Download the LLM
-The Ollama container boots up empty. You must pull the `llama3.1` model before starting your first meeting:
-```bash
-docker compose exec ollama ollama run llama3.1
-```
-(Once it says "success", type `/bye` to exit).
-
-Mem0 uses an Ollama embedder by default, so also pull the embedding model once:
+The Vexa core logic and bot are frequently updated. To grab the latest changes without fully reinstalling:
 
 ```bash
-docker compose exec ollama ollama pull nomic-embed-text
+./update_vexa.sh
 ```
+
+This script will pull the latest Vexa submodule updates, fetch the latest docker images, and restart the Vexa services smoothly.

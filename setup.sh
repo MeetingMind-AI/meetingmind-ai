@@ -75,10 +75,15 @@ json_get() {
   sed -n "s/.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p"
 }
 
+NON_INTERACTIVE=false
+
 prompt_yes_no() {
   local prompt="$1"
   local default="$2"
   local reply
+  if [ "$NON_INTERACTIVE" = "true" ]; then
+    return 1 # Default to NO in non-interactive mode for optional features
+  fi
   while true; do
     read -r -p "$prompt" reply
     reply="${reply:-$default}"
@@ -91,6 +96,12 @@ prompt_yes_no() {
 }
 
 main() {
+  for arg in "$@"; do
+    case "$arg" in
+      -y|--non-interactive|--yes) NON_INTERACTIVE=true ;;
+    esac
+  done
+
   cd "$SCRIPT_DIR"
 
   log_step "Validating host dependencies"
@@ -141,13 +152,6 @@ MEM0_OLLAMA_URL=http://ollama:11434
 MEM0_LLM_MODEL=hermes3:8b
 MEM0_EMBED_MODEL=nomic-embed-text
 MEM0_QDRANT_URL=http://qdrant:6333
-
-# --- User Configurations ---
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=465
-SMTP_USER=apikey
-SMTP_PASSWORD=${SMTP_PASSWORD}
-SMTP_FROM=${SMTP_FROM}
 
 # Generated Security Layer
 VEXA_API_KEY=
