@@ -109,3 +109,33 @@ After doing that, run the submodule update again:
 ```bash
 git submodule update --init --recursive
 ```
+
+## 🗄️ Database Migrations
+
+### "Can't locate revision identified by 'xxxx'"
+
+This error occurs when you run `docker compose exec backend alembic upgrade head` but the database tracker points to a migration file (`xxxx`) that no longer exists in your codebase. This typically happens when you:
+1. Create and apply a migration locally.
+2. Switch to a different branch or pull remote changes that delete or rewrite that local migration file.
+
+**How to avoid this:**
+Always downgrade your local database to a known common base *before* switching branches or pulling changes that delete migrations:
+```bash
+docker compose exec backend alembic downgrade <target_revision>
+```
+
+**How to fix it if you forgot to downgrade:**
+If your database is stuck pointing to a missing revision, you must manually force the Alembic version tracker in the database to point to the last known good revision, then upgrade:
+
+```bash
+# 1. Update the PostgreSQL tracker directly (replace a1b2c3d4e5f6 with the last known good revision from your branch)
+docker compose exec postgres psql -U meetingmind -d meetingmind -c "UPDATE alembic_version SET version_num='a1b2c3d4e5f6';"
+
+# 2. Run the migrations again
+docker compose exec backend alembic upgrade head
+```
+
+If `upgrade head` fails with a "column already exists" error, it means the schema was already modified by the deleted migration. In this case, just force the tracker to the very latest version on your branch:
+```bash
+docker compose exec postgres psql -U meetingmind -d meetingmind -c "UPDATE alembic_version SET version_num='<latest_revision>';"
+```
