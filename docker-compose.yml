@@ -47,8 +47,8 @@ services:
     environment:
       DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
       REDIS_URL: redis://redis:6379/0
-      VEXA_API_URL: http://host.docker.internal:8056/bots
-      VEXA_WS_URL: ws://host.docker.internal:8056/ws
+      VEXA_API_URL: http://host.docker.internal:18056/bots
+      VEXA_WS_URL: ws://host.docker.internal:18056/ws
       VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: hermes3:8b
