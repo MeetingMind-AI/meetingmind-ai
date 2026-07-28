@@ -91,7 +91,7 @@ services:
       OLLAMA_NUM_PARALLEL: "2"
       OLLAMA_KV_CACHE_TYPE: "q8_0"
       OLLAMA_MAX_VRAM: "16384"
-      OLLAMA_KEEP_ALIVE: "60s"
+      OLLAMA_KEEP_ALIVE: "10h"
     shm_size: '2gb'
     ports:
       - "11434:11434"
