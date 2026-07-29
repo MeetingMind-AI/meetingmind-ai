@@ -11,12 +11,6 @@ This repository orchestrates two main zones:
 
 See the full documentation index in [docs/README.md](docs/README.md).
 
-## ✨ Recent Updates (July 2026)
-- **Kanban Task Deletion**: Added a dedicated `DELETE` endpoint and UI trash bin button for permanently removing action items from the Global Kanban board.
-- **Proposal Category Display**: Fixed an issue where all live proposals were categorized as "PARKING LOT" by normalizing the frontend's mapping of backend `action_type` strings to local component types.
-- **Empty Transcript Handling**: Resolved an issue where meetings without transcript content would cause an infinite loading spinner on the Review page. The backend now persists a fallback summary to properly unblock the UI.
-- **Loading Overlay Stability**: Prevented accidental deletion of completed meetings by dismissing the loading overlay (and its "Cancel" button) immediately upon bot `completed` or `failed` states.
-
 ## Architecture
 
 - **Sensor Zone (`vexa/`)**
