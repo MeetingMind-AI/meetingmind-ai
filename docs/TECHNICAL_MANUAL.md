@@ -12,16 +12,6 @@
 
 MeetingMind-AI resolves these challenges through a unified, offline-first monorepo platform. The system combines local automatic speech recognition (ASR via local Whisper models), local open-weight Large Language Models (LLMs via Ollama), long-term semantic vector memory (Mem0 backed by Qdrant), and a multi-agent debate framework based on the **BOLAA** (Orchestrated Multi-Agent Discussion) paradigm.
 
-**Note**: This file is a mirror of the official project technical manual located at [`docs/TECHNICAL_MANUAL.md`](docs/TECHNICAL_MANUAL.md).
-
-### Recent System Updates (July 2026)
-- **Kanban Action Deletion (`DELETE /api/meetings/{id}/actions/{id}`)**: System now supports destructive removal of irrelevant extracted proposals directly from the Global Kanban UI to prevent board pollution.
-- **Proposal Badge Mapping Fix**: Handled property name divergence between WebSocket live events (`type`) and REST API payloads (`action_type`), correctly routing UI components to display specific categorizations ("TO DO", "BLOCKER", etc.) rather than a default "PARKING LOT" fallback.
-- **Zero-Transcript Graceful Degradation**: Upgraded the `ControllerAgent` execution pipeline to persist a static fallback summary payload when meetings conclude without recorded transcript chunks, unblocking the React frontend from infinite loading spins in edge-case zero-utterance meetings.
-- **State-Aware UI Overlays**: Synchronized the frontend `Live.jsx` loading states with backend bot termination hooks (`completed` or `failed`), proactively unmounting the overlay. This prevents accidental HTTP `DELETE` calls triggered by stale "Cancel" UI buttons appearing over valid completed meetings.
-
----
-
 This document serves as the official technical manual for academic evaluation, software architecture review, and deployment verification by university faculty, computer science researchers, and system administrators.
 
 ---
