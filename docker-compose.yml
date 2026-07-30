@@ -61,6 +61,8 @@ services:
       MEM0_LLM_MODEL: hermes3:8b
       MEM0_EMBED_MODEL: nomic-embed-text
       MEM0_QDRANT_URL: http://qdrant:6333
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-MeetingMind <onboarding@resend.dev>}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
