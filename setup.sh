@@ -147,15 +147,6 @@ main() {
     fi
   fi
 
-  log_step "Interactive configuration"
-  SMTP_PASSWORD=""
-  SMTP_FROM=""
-  if prompt_yes_no "Configure email alerts? [y/N]: " "n"; then
-    read -r -s -p "SMTP_PASSWORD: " SMTP_PASSWORD
-    printf "\n"
-    read -r -p "SMTP_FROM: " SMTP_FROM
-  fi
-
   log_step "Writing global .env"
   local ollama_url="http://ollama:11434/api/generate"
   local mem0_ollama_url="http://ollama:11434"
