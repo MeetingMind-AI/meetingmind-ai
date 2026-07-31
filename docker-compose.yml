@@ -101,8 +101,21 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - meetingmind_network
-    # If your Linux VM has an NVIDIA GPU, uncomment below:
-    # deploy:
+    # CPU/memory limits prevent Ollama from starving Whisper transcription.
+    # On Apple Silicon (Docker CPU-only, no Metal GPU), Ollama consumes ALL
+    # available cores without limits. Adjust cpus based on your core count:
+    #   M4 Pro (14 cores): cpus=8 leaves 6 for Whisper + services
+    #   M3/M2 Pro (12 cores): cpus=6 leaves 6 for Whisper + services
+    #   M1/M2 (8 cores): cpus=4 leaves 4 for Whisper + services
+    # For Linux NVIDIA GPU: remove the limits block and uncomment the GPU
+    # reservations below instead.
+    deploy:
+      resources:
+        limits:
+          cpus: "${OLLAMA_CPU_LIMIT:-8.0}"
+          memory: "${OLLAMA_MEMORY_LIMIT:-6g}"
+    # If your Linux VM has an NVIDIA GPU, uncomment below and REMOVE the
+    # limits block above:
     #   resources:
     #     reservations:
     #       devices:
