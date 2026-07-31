@@ -1,0 +1,15 @@
+# vexa.override.yml
+# This file is used to override the default Vexa docker-compose.yml settings.
+
+services:
+  runtime:
+    environment:
+      - DOCKER_SHM_SIZE=1g
+  
+  meeting-api:
+    environment:
+      - RECORDING_ENABLED=false
+  
+  gateway:
+    environment:
+      - GUARD_ENABLED=false

@@ -47,8 +47,8 @@ services:
     environment:
       DATABASE_URL: postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
       REDIS_URL: redis://redis:6379/0
-      VEXA_API_URL: http://vexa-v012-gateway-1:8000/bots
-      VEXA_WS_URL: ws://vexa-v012-gateway-1:8000/ws
+      VEXA_API_URL: http://gateway:8000/bots
+      VEXA_WS_URL: ws://gateway:8000/ws
       VEXA_API_KEY: ${VEXA_API_KEY}
       OLLAMA_URL: http://ollama:11434/api/generate
       OLLAMA_MODEL: hermes3:8b
@@ -102,13 +102,13 @@ services:
     networks:
       - meetingmind_network
     # If your Linux VM has an NVIDIA GPU, uncomment below:
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [ gpu ]
 
 volumes:
   postgres_data:
@@ -121,4 +121,4 @@ networks:
     driver: bridge
   vexa_net:
     external: true
-    name: vexa-v012_vexa
+    name: ${VEXA_NETWORK:-vexa_vexa}
