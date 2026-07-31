@@ -15,3 +15,4 @@ Welcome to the central documentation hub.
 
 ## ✨ Features
 - [Mini Floating Panel (Picture-in-Picture API)](features/mini-popup-pip.md)
+- [Meeting Report Email (Resend HTTP API)](features/email-report.md)

@@ -153,7 +153,7 @@ The cognitive core of MeetingMind-AI is managed by the `ControllerAgent` (`backe
                   └────────────────┬─────────────────┘
                                    │
                                    ▼
-             PostgreSQL + Mem0 Vector DB + SMTP Email Distribution
+             PostgreSQL + Mem0 Vector DB + Resend HTTP Email Distribution
 ```
 
 #### Pipeline Execution Stages:
@@ -187,7 +187,7 @@ The cognitive core of MeetingMind-AI is managed by the `ControllerAgent` (`backe
 7. **Persistence, Vector Indexing & Email Distribution**:
    - Final JSON summary and structured debate logs are stored in PostgreSQL (`meetings.summary` and `meetings.discussion_log`).
    - Extracted decisions and blockers are indexed in Mem0 for future meeting recall.
-   - An automated HTML meeting report is generated and sent via SMTP to team members.
+   - An automated HTML meeting report is generated and sent via the Resend HTTP API to selected team members.
 
 ---
 
