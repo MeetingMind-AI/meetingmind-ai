@@ -60,7 +60,11 @@ update_env_key() {
     die "Env file not found: $file_path"
   fi
   if grep -q "^${key}=" "$file_path"; then
-    sed -i "s|^${key}=.*|${key}=${value}|" "$file_path"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' "s|^${key}=.*|${key}=${value}|" "$file_path"
+    else
+      sed -i "s|^${key}=.*|${key}=${value}|" "$file_path"
+    fi
   else
     printf "\n%s=%s\n" "$key" "$value" >> "$file_path"
   fi
@@ -96,6 +100,7 @@ prompt_yes_no() {
 }
 
 main() {
+  NATIVE_OLLAMA=false
   for arg in "$@"; do
     case "$arg" in
       -y|--non-interactive|--yes) NON_INTERACTIVE=true ;;
@@ -125,6 +130,23 @@ main() {
     fi
   fi
 
+  # Apple Silicon optimization: detect ARM Mac and offer native Ollama
+  if [[ "$(uname -m)" == "arm64" ]] && [[ "$OSTYPE" == "darwin"* ]]; then
+    log_step "Apple Silicon detected ($(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'ARM Mac'))"
+    log_warn "Docker cannot use Metal GPU — Ollama will run CPU-only in containers."
+    log_warn "For best performance, run Ollama natively. See docs/apple-silicon-optimization.md"
+    if command -v ollama >/dev/null 2>&1; then
+      log_ok "Native Ollama detected at $(command -v ollama)"
+      if prompt_yes_no "Use native Ollama instead of Docker container? (Recommended) [Y/n]: " "y"; then
+        NATIVE_OLLAMA=true
+        log_ok "Will configure native Ollama (Metal GPU acceleration)"
+      fi
+    else
+      log_warn "Native Ollama not installed. Install from https://ollama.com for Metal GPU acceleration."
+      log_warn "Continuing with Docker Ollama (CPU-only, slower)."
+    fi
+  fi
+
   log_step "Interactive configuration"
   SMTP_PASSWORD=""
   SMTP_FROM=""
@@ -135,20 +157,28 @@ main() {
   fi
 
   log_step "Writing global .env"
+  local ollama_url="http://ollama:11434/api/generate"
+  local mem0_ollama_url="http://ollama:11434"
+  if [ "${NATIVE_OLLAMA:-false}" = "true" ]; then
+    ollama_url="http://host.docker.internal:11434/api/generate"
+    mem0_ollama_url="http://host.docker.internal:11434"
+  fi
+
   cat > ./.env <<EOF
 # Generated MeetingMind Application Context
 DATABASE_URL=postgresql://meetingmind:meetingmind@postgres:5432/meetingmind
 REDIS_URL=redis://redis:6379/0
-VEXA_API_URL=http://host.docker.internal:8056/bots
-VEXA_WS_URL=ws://host.docker.internal:8056/ws
-OLLAMA_URL=http://ollama:11434/api/generate
+VEXA_NETWORK=vexa-v012_vexa
+VEXA_API_URL=http://gateway:8000/bots
+VEXA_WS_URL=ws://gateway:8000/ws
+OLLAMA_URL=${ollama_url}
 OLLAMA_MODEL=hermes3:8b
-OLLAMA_FINAL_MODEL=qwen2.5:14b
+OLLAMA_FINAL_MODEL=hermes3:8b
 OLLAMA_TIMEOUT_SECONDS=120
 MEM0_ENABLED=true
 MEM0_SEARCH_ENABLED=true
 MEM0_SAVE_ENABLED=true
-MEM0_OLLAMA_URL=http://ollama:11434
+MEM0_OLLAMA_URL=${mem0_ollama_url}
 MEM0_LLM_MODEL=hermes3:8b
 MEM0_EMBED_MODEL=nomic-embed-text
 MEM0_QDRANT_URL=http://qdrant:6333
@@ -159,17 +189,18 @@ EOF
   log_ok "Global .env created"
 
   log_step "Preparing Vexa environment"
-  if [ -f "./vexa/deploy/env-example" ]; then
-    cp ./vexa/deploy/env-example ./vexa/.env
-  elif [ -f "./vexa/env-example" ]; then
-    cp ./vexa/env-example ./vexa/.env
+  if [ -f "./vexa/deploy/compose/.env.example" ]; then
+    cp ./vexa/deploy/compose/.env.example ./vexa/.env
+  elif [ -f "./vexa/.env.example" ]; then
+    cp ./vexa/.env.example ./vexa/.env
   else
     die "Vexa env example not found"
   fi
   log_ok "Vexa .env prepared"
 
   log_step "Pulling Vexa bot image"
-  docker pull vexaai/vexa-bot:latest
+  VEXA_IMAGE_TAG=$(grep "^IMAGE_TAG=" ./vexa/.env | cut -d'=' -f2 || echo "latest")
+  docker pull vexaai/vexa-bot:${VEXA_IMAGE_TAG:-latest}
   log_ok "Vexa bot image pulled"
 
   log_step "Starting core services (postgres, redis, qdrant)"
@@ -177,23 +208,28 @@ EOF
   log_ok "Core services started"
 
   log_step "Starting Vexa services"
-  "${COMPOSE_CMD[@]}" -f ./vexa/deploy/compose/docker-compose.yml --env-file ./vexa/.env up -d
+  "${COMPOSE_CMD[@]}" -p vexa-v012 -f ./vexa/deploy/compose/docker-compose.yml -f ./vexa.override.yml --env-file ./vexa/.env up -d
   log_ok "Vexa services started"
   countdown_spinner 10
 
+  log_step "Detecting Vexa network"
+  VEXA_NETWORK_DETECTED=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' vexa-v012-gateway-1 2>/dev/null || echo "vexa-v012_vexa")
+  log_ok "Detected Vexa network: $VEXA_NETWORK_DETECTED"
+  update_env_key "./.env" "VEXA_NETWORK" "$VEXA_NETWORK_DETECTED"
+
   log_step "Provisioning Vexa API key"
-  user_response="$(curl -sS -X POST "http://localhost:8057/admin/users" \
+  user_response="$(curl -sS -X POST "http://localhost:18057/admin/users" \
     -H "Content-Type: application/json" \
-    -H "X-Admin-API-Key: changeme" \
+    -H "X-Admin-API-Key: dev-admin-token" \
     -d '{"name":"meetingmind","email":"meetingmind@local"}')"
   user_id="$(printf "%s" "$user_response" | json_get "id")"
   if [ -z "$user_id" ]; then
     die "Failed to parse Vexa user id"
   fi
 
-  token_response="$(curl -sS -X POST "http://localhost:8057/admin/users/${user_id}/tokens" \
+  token_response="$(curl -sS -X POST "http://localhost:18057/admin/users/${user_id}/tokens" \
     -H "Content-Type: application/json" \
-    -H "X-Admin-API-Key: changeme" \
+    -H "X-Admin-API-Key: dev-admin-token" \
     -d '{"scopes":["bot","tx","browser"]}')"
   vexa_token="$(printf "%s" "$token_response" | json_get "token")"
   if [ -z "$vexa_token" ]; then
@@ -206,19 +242,52 @@ EOF
   update_env_key "./vexa/.env" "VEXA_API_KEY" "$vexa_token"
   log_ok "Env files updated"
 
+  log_step "Provisioning Local Transcription Service (Whisper)"
+  stt_token=$(openssl rand -hex 16)
+  if [ -f "./vexa/deploy/transcription/.env.example" ]; then
+    cp ./vexa/deploy/transcription/.env.example ./vexa/deploy/transcription/.env
+  fi
+  update_env_key "./vexa/deploy/transcription/.env" "API_TOKEN" "$stt_token"
+  update_env_key "./vexa/deploy/transcription/.env" "MODEL_SIZE" "small"
+  update_env_key "./vexa/deploy/transcription/.env" "VEXA_NETWORK" "$VEXA_NETWORK_DETECTED"
+  
+  update_env_key "./.env" "TRANSCRIPTION_SERVICE_URL" "http://transcription-api:80"
+  update_env_key "./.env" "TRANSCRIPTION_SERVICE_TOKEN" "$stt_token"
+  
+  update_env_key "./vexa/.env" "TRANSCRIPTION_SERVICE_URL" "http://transcription-api:80"
+  update_env_key "./vexa/.env" "TRANSCRIPTION_SERVICE_TOKEN" "$stt_token"
+  log_ok "Transcription configuration generated"
+
+  log_step "Applying configuration to Vexa services"
+  "${COMPOSE_CMD[@]}" -p vexa-v012 -f ./vexa/deploy/compose/docker-compose.yml -f ./vexa.override.yml --env-file ./vexa/.env up -d
+  log_ok "Vexa services updated"
+
+  log_step "Starting Transcription Service"
+  (cd ./vexa/deploy/transcription && "${COMPOSE_CMD[@]}" -p vexa_stt -f docker-compose.cpu.yml up -d)
+  log_ok "Transcription Service started"
+
   log_step "Starting full MeetingMind stack"
   "${COMPOSE_CMD[@]}" up -d
   log_ok "MeetingMind stack started"
 
+  if [ "${NATIVE_OLLAMA:-false}" = "true" ]; then
+    log_step "Stopping Docker Ollama (using native instead)"
+    "${COMPOSE_CMD[@]}" stop ollama 2>/dev/null || true
+    log_ok "Docker Ollama stopped — ensure 'ollama serve' is running on the host"
+  fi
+
   log_step "Running database migrations"
-  "${COMPOSE_CMD[@]}" exec -T backend alembic revision --autogenerate -m "initial_tables"
   "${COMPOSE_CMD[@]}" exec -T backend alembic upgrade head
   log_ok "Database migrations complete"
 
   log_step "Pulling Ollama models"
-  "${COMPOSE_CMD[@]}" exec -T ollama ollama pull hermes3:8b
-  "${COMPOSE_CMD[@]}" exec -T ollama ollama pull qwen2.5:14b
-  "${COMPOSE_CMD[@]}" exec -T ollama ollama pull nomic-embed-text
+  if [ "${NATIVE_OLLAMA:-false}" = "true" ]; then
+    ollama pull nomic-embed-text
+    ollama pull hermes3:8b
+  else
+    "${COMPOSE_CMD[@]}" exec -T ollama ollama pull nomic-embed-text
+    "${COMPOSE_CMD[@]}" exec -T ollama ollama pull hermes3:8b
+  fi
   log_ok "Ollama models pulled"
 
   log_ok "Setup complete"
