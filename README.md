@@ -80,7 +80,7 @@ flowchart TD
 ## ⚙️ Prerequisites & System Requirements
 
 ### Minimum Hardware Specs
-- **RAM:** Minimum 12GB of RAM allocated to Docker.
+- **RAM:** Minimum 10GB of RAM allocated to Docker.
 - **CPU:** 4+ Cores recommended.
 - **Storage:** 20GB+ free space for Docker images, LLM weights, and Whisper models.
 
