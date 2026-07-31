@@ -18,11 +18,7 @@ MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot in
 
 For a deep dive into the architecture, APIs, and features, see the **[Documentation Hub](docs/README.md)**.
 
-## ✨ Recent Updates (July 2026)
-- **Kanban Task Deletion**: Added a dedicated `DELETE` endpoint and UI trash bin button for permanently removing action items from the Global Kanban board.
-- **Proposal Category Display**: Fixed an issue where all live proposals were categorized as "PARKING LOT" by normalizing the frontend's mapping of backend `action_type` strings to local component types.
-- **Empty Transcript Handling**: Resolved an issue where meetings without transcript content would cause an infinite loading spinner on the Review page. The backend now persists a fallback summary to properly unblock the UI.
-- **Loading Overlay Stability**: Prevented accidental deletion of completed meetings by dismissing the loading overlay (and its "Cancel" button) immediately upon bot `completed` or `failed` states.
+
 
 ## 🏗 Repository Structure
 
@@ -81,46 +77,77 @@ flowchart TD
 - **UI Zone (`frontend/`)**
   - Vite React App on `http://localhost:3000` or `https://<server-ip>`
 
-## ⚙️ Prerequisites
+## ⚙️ Prerequisites & System Requirements
 
-- Docker + Docker Compose
-- NVIDIA Container Toolkit (Linux GPU hosts)
-- Python 3.11+ (if running services outside Docker)
-- Mem0 configuration (defaults to Ollama)
-- Ollama model pulled inside the Docker container (see Step 6)
+### Minimum Hardware Specs
+- **RAM:** Minimum 12GB of RAM allocated to Docker.
+- **CPU:** 4+ Cores recommended.
+- **Storage:** 20GB+ free space for Docker images, LLM weights, and Whisper models.
+
+### OS-Specific Setup
+
+#### macOS (Apple Silicon / Intel)
+- Install **Docker Desktop for Mac**.
+- Open Docker Desktop Settings -> Resources -> **Allocate at least 12GB of RAM**.
+- The `setup.sh` script automatically applies memory optimizations (e.g., disabling unused Vexa services) to keep the stack lightweight on Macs.
+
+#### Windows
+- Install **WSL2** (Windows Subsystem for Linux) and a Linux distribution like Ubuntu.
+- Install **Docker Desktop for Windows** and enable **WSL Integration** in Settings -> Resources -> WSL Integration.
+- Ensure Docker Desktop is allocated enough memory (via `.wslconfig` if necessary, setting `memory=12GB`).
+- Run the `setup.sh` script **inside your WSL terminal** (do not use PowerShell or Command Prompt).
+
+#### Linux
+- Docker + Docker Compose plugin installed.
+- NVIDIA Container Toolkit (for GPU hosts).
 - Enable NVIDIA Persistence Mode on the host to prevent GPU power-down latency spikes:
   ```bash
   sudo nvidia-smi -pm 1
   ```
-  This keeps the driver and GPU awake between transcript chunks, avoiding cold-start delays.
 
 ## 🚀 Quickstart & Deployment
 
 We provide an automated setup script that handles dependencies, the Vexa bot, database migrations, and LLM pulls.
 
-### 1. Run the Setup Script
+### 1. Run the Setup (Cold Start)
 
-To perform a complete setup interactively:
+To perform a complete setup interactively from a cold start, run:
 ```bash
-./setup.sh
+make setup
 ```
 
 **Non-Interactive Mode:** 
-If you want to skip optional configuration prompts (like email alerts or Nvidia persistence mode), run:
+If you want to skip optional configuration prompts (like email alerts or Nvidia persistence mode), you can still call the script directly:
 ```bash
 ./setup.sh --non-interactive
 ```
 
-This script will:
+This setup process will:
 1. Generate the necessary `.env` files.
 2. Start the core database, Redis, and Qdrant containers.
 3. Start the Vexa transcription services.
 4. Mint a Vexa API key and link it to your backend.
 5. Boot the MeetingMind backend and frontend.
 6. Run PostgreSQL database migrations.
-7. Pull the required Ollama models (`llama3`).
+7. Pull the required Ollama models.
 
-### 2. Access the Web UI
+### 2. Standard Start / Stop
+
+If you have already run the setup and just want to bring the existing stack up or down without rebuilding:
+```bash
+make up
+make down
+```
+
+### 3. Rebuilding the Stack
+
+If you pull new code or make changes to the backend/frontend and want to apply them, you can rebuild the core stack quickly by running:
+```bash
+make rebuild
+```
+This performs a safe `docker compose up -d --build` for the main stack and also restarts/rebuilds the Vexa stack to pick up any changes, without destroying your data or requiring a full cold start.
+
+### 4. Access the Web UI
 
 Once the setup completes and all containers are running, open the app in your browser:
 
@@ -139,6 +166,16 @@ Once the setup completes and all containers are running, open the app in your br
 > - **Safari**: Click **Show Details** → **visit this website**
 >
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
+
+## 🧠 Changing AI Models
+
+By default, MeetingMind runs `hermes3:8b` for summarization and `small` for Whisper transcription. You can easily switch these out using the included interactive configuration script.
+
+```bash
+./change_models.sh
+```
+
+This script will prompt you for the new model names, update the necessary `.env` files behind the scenes, and safely restart the affected Docker containers to apply the changes immediately.
 
 ## 🔄 Updating Vexa
 
