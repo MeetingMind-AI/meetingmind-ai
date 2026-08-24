@@ -95,8 +95,9 @@ services:
       OLLAMA_MAX_VRAM: "16384"
       OLLAMA_KEEP_ALIVE: "10h"
     shm_size: '2gb'
-    ports:
-      - "11434:11434"
+    # Commented out port binding when using native Ollama on host port 11434
+    # ports:
+    #   - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
