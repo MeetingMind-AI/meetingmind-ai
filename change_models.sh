@@ -62,7 +62,7 @@ main() {
   printf "\n"
 
   read -r -p "Enter new LLM Model name (e.g. hermes3:8b, qwen2.5:7b, or press Enter to skip): " new_llm
-  read -r -p "Enter new Whisper Model size (tiny, base, small, medium, large-v3, or press Enter to skip): " new_whisper
+  read -r -p "Enter new Whisper Model size (CPU recommended: small.en | GPU: large-v3-turbo, or press Enter to skip): " new_whisper
 
   if [ -n "$new_llm" ]; then
     log_step "Updating LLM Model to $new_llm"

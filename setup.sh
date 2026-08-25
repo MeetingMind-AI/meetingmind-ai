@@ -239,7 +239,7 @@ EOF
     cp ./vexa/deploy/transcription/.env.example ./vexa/deploy/transcription/.env
   fi
   update_env_key "./vexa/deploy/transcription/.env" "API_TOKEN" "$stt_token"
-  update_env_key "./vexa/deploy/transcription/.env" "MODEL_SIZE" "small"
+  update_env_key "./vexa/deploy/transcription/.env" "MODEL_SIZE" "small.en"
   update_env_key "./vexa/deploy/transcription/.env" "VEXA_NETWORK" "$VEXA_NETWORK_DETECTED"
   
   update_env_key "./.env" "TRANSCRIPTION_SERVICE_URL" "http://transcription-api:80"

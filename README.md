@@ -169,7 +169,7 @@ Once the setup completes and all containers are running, open the app in your br
 
 ## 🧠 Changing AI Models
 
-By default, MeetingMind runs `hermes3:8b` for summarization and `small` for Whisper transcription. You can easily switch these out using the included interactive configuration script.
+By default, MeetingMind runs `hermes3:8b` for summarization and `small.en` for Whisper transcription (optimised for English on CPU — ~18× faster than real-time with no language-detection drift). You can easily switch these out using the included interactive configuration script.
 
 ```bash
 ./change_models.sh
