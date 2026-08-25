@@ -247,6 +247,12 @@ EOF
   
   update_env_key "./vexa/.env" "TRANSCRIPTION_SERVICE_URL" "http://transcription-api:80"
   update_env_key "./vexa/.env" "TRANSCRIPTION_SERVICE_TOKEN" "$stt_token"
+
+  if [ -f "./vexa/deploy/compose/.env" ]; then
+    update_env_key "./vexa/deploy/compose/.env" "TRANSCRIPTION_SERVICE_URL" "http://transcription-api:80"
+    update_env_key "./vexa/deploy/compose/.env" "TRANSCRIPTION_SERVICE_TOKEN" "$stt_token"
+    update_env_key "./vexa/deploy/compose/.env" "VEXA_API_KEY" "$vexa_token"
+  fi
   log_ok "Transcription configuration generated"
 
   log_step "Applying configuration to Vexa services"
