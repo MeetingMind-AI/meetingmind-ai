@@ -92,6 +92,40 @@ ensure_data_volume() {
   printf '%s' "$vid"
 }
 
+# Ensure our SSH public key is registered in Scaleway IAM, so it is injected
+# into every new server at boot (the reliable path — cloud-init user-data is
+# not). Idempotent: matches on the key body (type + base64), ignoring comment.
+ensure_ssh_key() {
+  local want have
+  want="$(printf '%s' "${MM_SSH_PUBLIC_KEY}" | awk '{print $1" "$2}')"
+  have="$(scw iam ssh-key list -o json 2>/dev/null | jq -r '.[].public_key' \
+          | awk '{print $1" "$2}')" || have=""
+  if printf '%s\n' "${have}" | grep -qxF "${want}"; then
+    log "SSH key already registered in Scaleway IAM."
+  else
+    log "Registering SSH public key in Scaleway IAM..."
+    scw iam ssh-key create name="meetingmind-cloud" \
+      public-key="${MM_SSH_PUBLIC_KEY}" >/dev/null \
+      || warn "Could not register SSH key (maybe already present) — continuing."
+    ok "SSH key registration step done."
+  fi
+}
+
+# If the persistent volume is still attached to a DIFFERENT server (leftover
+# from a failed run), detach it there so we can attach it to the new server.
+free_data_volume() {
+  local vid="$1" sid="$2" holder
+  holder="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+            | jq -r --arg s "${sid}" \
+              '[.references[]? | select((.product_resource_type // "")|test("server")) | .product_resource_id] | map(select(. != $s)) | .[0] // empty')" \
+    || holder=""
+  if [ -n "${holder}" ]; then
+    warn "Data volume is attached to another server (${holder}); detaching it there..."
+    scw instance server detach-volume server-id="${holder}" volume-id="${vid}" >/dev/null 2>&1 || true
+    sleep 5
+  fi
+}
+
 # --- SSH ---------------------------------------------------------------------
 
 ssh_key_file() {
@@ -120,6 +154,9 @@ wait_for_ssh() {
 cmd_up() {
   require_env SCW_ACCESS_KEY SCW_SECRET_KEY SCW_DEFAULT_PROJECT_ID \
               MM_SSH_PRIVATE_KEY MM_SSH_PUBLIC_KEY MM_GH_PAT
+
+  # Register the SSH key before any server is created so Scaleway injects it.
+  ensure_ssh_key
 
   # The persistent SBS data volume exists across cycles — ensure it first so
   # both the create and reuse paths can attach it.
@@ -158,6 +195,7 @@ cmd_up() {
   if [ -n "$attached" ]; then
     log "Data volume already attached."
   else
+    free_data_volume "${vid}" "${sid}"   # detach from any leftover server first
     log "Attaching persistent data volume ${vid}..."
     scw instance server attach-volume \
       server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>&1 \
