@@ -96,10 +96,10 @@ couple of minutes.
 
 ## ⚠️ Things to verify on your first run (I could not test against a live account)
 
-1. **Volume type.** The script defaults to `MM_VOLUME_TYPE=b_ssd` (legacy
-   detachable block SSD). If your project is on **Scaleway Block Storage (SBS)**
-   only and volume creation fails, set `MM_VOLUME_TYPE=sbs_volume` in
-   `config.env` and re-run. Everything else is identical.
+1. **Volume performance tier.** Storage is **Scaleway Block Storage (SBS)** —
+   the only option today (legacy `b_ssd` was discontinued). `MM_VOLUME_IOPS`
+   defaults to `5000`; the only other stock tier is `15000`. Root volume uses
+   `MM_ROOT_IOPS`.
 2. **GPU image label.** Defaults to `ubuntu_noble_gpu_os_12`. If Scaleway has
    moved to `ubuntu_noble_gpu_os_13`, bump `MM_IMAGE` in `config.env`.
 3. **`scw` flag drift.** The `server delete` / `volume detach` flags occasionally
