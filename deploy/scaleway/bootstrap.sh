@@ -110,7 +110,7 @@ if [ -f "${MARKER}" ]; then
   make up
 else
   log "First-time cold start (this pulls ~6GB of models — be patient)..."
-  ./setup.sh --non-interactive
+  bash ./setup.sh --non-interactive
   touch "${MARKER}"
 fi
 
