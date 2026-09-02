@@ -53,8 +53,9 @@ server_id() {
 }
 
 # Return the persistent data volume ID, or empty string.
+# Data lives on a Scaleway Block Storage (SBS) volume — the 'scw block' API.
 data_volume_id() {
-  scw instance volume list name="${MM_DATA_VOLUME_NAME}" -o json 2>/dev/null \
+  scw block volume list name="${MM_DATA_VOLUME_NAME}" zone="${MM_ZONE}" -o json 2>/dev/null \
     | jq -r '.[0].id // empty'
 }
 
@@ -78,13 +79,14 @@ ensure_data_volume() {
   if [ -n "$vid" ]; then
     log "Persistent data volume already exists: ${vid}"
   else
-    log "Creating persistent data volume ${MM_DATA_VOLUME_NAME} (${MM_DATA_VOLUME_SIZE}, ${MM_VOLUME_TYPE})..."
-    vid="$(scw instance volume create \
+    log "Creating persistent SBS data volume ${MM_DATA_VOLUME_NAME} (${MM_DATA_VOLUME_SIZE}, ${MM_VOLUME_IOPS} IO/s)..."
+    vid="$(scw block volume create \
              name="${MM_DATA_VOLUME_NAME}" \
-             volume-type="${MM_VOLUME_TYPE}" \
-             size="${MM_DATA_VOLUME_SIZE}" \
-             -o json | jq -r '.volume.id // .id')"
-    [ -n "$vid" ] || die "Volume creation failed (check MM_VOLUME_TYPE — see README 'Volume type')."
+             perf-iops="${MM_VOLUME_IOPS}" \
+             from-empty.size="${MM_DATA_VOLUME_SIZE}" \
+             zone="${MM_ZONE}" \
+             -w -o json | jq -r '.id // .volume.id')"
+    [ -n "$vid" ] || die "SBS volume creation failed (check MM_VOLUME_IOPS is 5000 or 15000)."
     ok "Data volume created: ${vid}"
   fi
   printf '%s' "$vid"
@@ -133,7 +135,7 @@ cmd_up() {
       name="${MM_SERVER_NAME}" \
       type="${MM_SERVER_TYPE}" \
       image="${MM_IMAGE}" \
-      root-volume="block:${MM_ROOT_VOLUME_SIZE}" \
+      root-volume="sbs:${MM_ROOT_VOLUME_SIZE}:${MM_ROOT_IOPS}" \
       additional-volumes.0="${vid}" \
       ip=new \
       cloud-init=@"${userdata}" \
@@ -188,24 +190,33 @@ cmd_down() {
   log "Powering off ${MM_SERVER_NAME} (${sid})..."
   scw instance server stop "${sid}" -w >/dev/null 2>&1 || warn "stop returned non-zero (maybe already stopped)."
 
-  # Detach the persistent data volume so deleting the server can't take it.
+  # Detach the persistent data volume FIRST so deleting the server can't take
+  # it. If we can't confirm the detach, we abort before deleting — losing the
+  # data volume is worse than leaving a stopped server around.
   local vid
   vid="$(data_volume_id)"
   if [ -n "$vid" ]; then
     log "Detaching persistent data volume ${vid} (keeping it)..."
-    scw instance volume detach "${vid}" >/dev/null 2>&1 \
-      || scw instance volume detach volume-id="${vid}" >/dev/null 2>&1 \
-      || scw instance server detach-volume "${sid}" volume-id="${vid}" >/dev/null 2>&1 \
-      || warn "Could not detach data volume automatically — verify in console before deleting!"
+    scw instance server detach-volume server-id="${sid}" volume-id="${vid}" >/dev/null 2>&1 || true
+    # Confirm it is no longer attached to this server.
+    local still
+    still="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+             | jq -r --arg s "${sid}" '[.references[]?.product_resource_id] | index($s) // empty')"
+    if [ -n "$still" ]; then
+      die "Data volume ${vid} is still attached to the server — refusing to delete. Detach it in the console, then re-run Down."
+    fi
+    ok "Data volume detached and safe."
   fi
 
   # Capture the public IP so we can release it (a reserved unused IP still costs).
   local ipid
   ipid="$(scw instance server list name="${MM_SERVER_NAME}" -o json | jq -r '.[0].public_ip.id // empty')"
 
+  # with-volumes=root deletes ONLY the boot volume — never the (already
+  # detached) persistent data volume, even if the detach above misbehaved.
   log "Deleting server + its boot volume..."
-  scw instance server delete "${sid}" with-volumes=local with-ip=true >/dev/null 2>&1 \
-    || scw instance server delete "${sid}" >/dev/null
+  scw instance server delete "${sid}" with-volumes=root with-ip=true force-shutdown=true -w >/dev/null 2>&1 \
+    || scw instance server delete "${sid}" with-volumes=root >/dev/null
 
   if [ -n "$ipid" ]; then
     scw instance ip delete "${ipid}" >/dev/null 2>&1 || true
