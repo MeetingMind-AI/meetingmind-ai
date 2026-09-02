@@ -1,4 +1,4 @@
-.PHONY: all up setup vexa-up stt-up stt-down app-up app-restart rebuild down stop logs status ps
+.PHONY: all up setup vexa-up stt-up stt-down app-up app-restart rebuild down stop logs status ps cloud-up cloud-down cloud-status
 
 COLOR_RESET=\033[0m
 COLOR_TITLE=\033[1;36m
@@ -85,3 +85,15 @@ status:
 	docker compose -p vexa-v012 -f vexa/deploy/compose/docker-compose.yml -f vexa.override.yml --env-file vexa/.env ps
 
 ps: status
+
+# ── Scaleway on-demand GPU (pay only while coding) ───────────────────────────
+# Same logic the GitHub "Cloud — Up/Down" buttons run. Needs the SCW_*/MM_*
+# env vars exported locally (see deploy/scaleway/README.md).
+cloud-up:
+	@bash deploy/scaleway/cloud.sh up
+
+cloud-down:
+	@bash deploy/scaleway/cloud.sh down
+
+cloud-status:
+	@bash deploy/scaleway/cloud.sh status

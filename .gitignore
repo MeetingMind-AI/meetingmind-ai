@@ -3,6 +3,10 @@
 /.idea
 .env
 
+# Scaleway lifecycle scratch files (secrets — never commit)
+deploy/scaleway/.ssh_key
+deploy/scaleway/.userdata.yml
+
 # Python
 __pycache__/
 *.py[cod]
