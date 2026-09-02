@@ -128,6 +128,14 @@ free_data_volume() {
   fi
 }
 
+# True if the SBS volume is currently attached to the given server id.
+volume_attached_to() {
+  local vid="$1" sid="$2" got
+  got="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+         | jq -r --arg s "${sid}" 'any(.references[]?; .product_resource_id==$s)')" || got="false"
+  [ "${got}" = "true" ]
+}
+
 # Poll until the SBS volume reports status=available (i.e. not attached), so a
 # just-detached volume is ready to attach. Never blocks on an unknown shape.
 wait_volume_available() {
@@ -187,13 +195,32 @@ cmd_up() {
 
   sid="$(server_id)"
   if [ -n "$sid" ]; then
+    # Reuse path: server pre-exists. Ensure the data volume is attached to it.
     warn "Server '${MM_SERVER_NAME}' already exists (${sid}). Reusing it."
+    if volume_attached_to "${vid}" "${sid}"; then
+      log "Data volume already attached to this server."
+    else
+      free_data_volume "${vid}" "${sid}"   # detach from any leftover holder
+      wait_volume_available "${vid}"
+      log "Attaching persistent data volume ${vid}..."
+      local err; err="$(mktemp)"
+      if ! scw instance server attach-volume \
+             server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>"${err}"; then
+        if grep -qi "already attached" "${err}"; then
+          log "Volume already attached (per API) — continuing."
+        else
+          warn "attach-volume failed. Real error:"; cat "${err}" >&2 || true
+          warn "Volume state:"; scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null | jq -c '{status, references}' >&2 || true
+          die "Could not attach data volume ${vid}. Run 'Cloud — Down' with wipe_volume=true, then Up."
+        fi
+      fi
+      ok "Data volume attached."
+    fi
   else
+    # Create path: attach the data volume INLINE at create time so it is
+    # present at boot (no hot-plug latency). Needs a clean volume UUID.
     local userdata
     userdata="$(ssh_userdata_file)"
-
-    # Attach the existing data volume inline at create time so it is present at
-    # boot (no hot-plug latency). This needs a clean volume UUID.
     log "Creating GPU server ${MM_SERVER_NAME} (${MM_SERVER_TYPE} @ ${MM_ZONE})..."
     scw instance server create \
       name="${MM_SERVER_NAME}" \
@@ -204,28 +231,8 @@ cmd_up() {
       ip=new \
       cloud-init=@"${userdata}" \
       -w >/dev/null
-    ok "Server created and running."
+    ok "Server created with data volume attached."
     sid="$(server_id)"
-  fi
-
-  # Attach the persistent data volume (idempotent — skip if already attached).
-  local attached=""
-  attached="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null \
-              | jq -r --arg v "${vid}" '[.volumes[]?.id] | index($v) // empty')" || attached=""
-  if [ -n "$attached" ]; then
-    log "Data volume already attached."
-  else
-    free_data_volume "${vid}" "${sid}"     # detach from any leftover holder
-    wait_volume_available "${vid}"         # wait until it is free to attach
-    log "Attaching persistent data volume ${vid}..."
-    local err; err="$(mktemp)"
-    if ! scw instance server attach-volume \
-           server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>"${err}"; then
-      warn "attach-volume failed. Real error:"; cat "${err}" >&2 || true
-      warn "Volume state:"; scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null | jq -c '{status, references}' >&2 || true
-      die "Could not attach data volume ${vid}. If it is stuck on a ghost server, run 'Cloud — Down' with wipe_volume=true, then Up."
-    fi
-    ok "Data volume attached."
   fi
 
   local ip key
