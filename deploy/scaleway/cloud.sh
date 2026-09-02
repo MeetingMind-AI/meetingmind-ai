@@ -192,15 +192,15 @@ cmd_up() {
     local userdata
     userdata="$(ssh_userdata_file)"
 
-    # NOTE: an existing SBS volume cannot be attached inline at create time
-    # (the additional-volumes builder can't infer its type) — we attach it
-    # separately below.
+    # Attach the existing data volume inline at create time so it is present at
+    # boot (no hot-plug latency). This needs a clean volume UUID.
     log "Creating GPU server ${MM_SERVER_NAME} (${MM_SERVER_TYPE} @ ${MM_ZONE})..."
     scw instance server create \
       name="${MM_SERVER_NAME}" \
       type="${MM_SERVER_TYPE}" \
       image="${MM_IMAGE}" \
       root-volume="sbs:${MM_ROOT_VOLUME_SIZE}:${MM_ROOT_IOPS}" \
+      additional-volumes.0="${vid}" \
       ip=new \
       cloud-init=@"${userdata}" \
       -w >/dev/null
