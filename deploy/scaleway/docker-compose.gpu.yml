@@ -1,0 +1,20 @@
+# GPU override for the main MeetingMind stack.
+# Merged automatically on the Scaleway box via COMPOSE_FILE (see bootstrap.sh).
+# Gives Ollama the NVIDIA L4 and lifts the CPU-only guardrails from the base
+# compose file (those exist to protect Whisper on CPU-only laptops).
+services:
+  ollama:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+    deploy:
+      resources:
+        # Remove the CPU-box memory/cpu clamp; the model lives in VRAM here.
+        limits:
+          cpus: "8.0"
+          memory: 24g
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

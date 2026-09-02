@@ -1,0 +1,70 @@
+name: "☁️ Cloud — Up (create GPU box)"
+
+# Manual button in the Actions tab. Creates the Scaleway GPU server, attaches
+# the persistent data volume, and brings the whole stack online.
+on:
+  workflow_dispatch:
+    inputs:
+      server_type:
+        description: "Override instance type (blank = config default L4-1-24G)"
+        required: false
+        default: ""
+      zone:
+        description: "Override zone (blank = config default fr-par-2)"
+        required: false
+        default: ""
+
+concurrency:
+  group: meetingmind-cloud-lifecycle   # never run up/down at the same time
+  cancel-in-progress: false
+
+jobs:
+  up:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Scaleway CLI + jq
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          curl -fsSL https://github.com/scaleway/scaleway-cli/releases/latest/download/scaleway-cli_linux_amd64 \
+            -o /usr/local/bin/scw
+          sudo chmod +x /usr/local/bin/scw
+          scw version
+
+      - name: Bring the stack up
+        id: up
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+          SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+          MM_SSH_PRIVATE_KEY: ${{ secrets.MM_SSH_PRIVATE_KEY }}
+          MM_SSH_PUBLIC_KEY: ${{ secrets.MM_SSH_PUBLIC_KEY }}
+          MM_GH_PAT: ${{ secrets.MM_GH_PAT }}
+          MM_RESEND_API_KEY: ${{ secrets.MM_RESEND_API_KEY }}
+          MM_EMAIL_FROM: ${{ secrets.MM_EMAIL_FROM }}
+          MM_SERVER_TYPE: ${{ github.event.inputs.server_type }}
+          MM_ZONE: ${{ github.event.inputs.zone }}
+        run: |
+          # Empty inputs -> let config.env defaults win.
+          [ -z "$MM_SERVER_TYPE" ] && unset MM_SERVER_TYPE || true
+          [ -z "$MM_ZONE" ] && unset MM_ZONE || true
+          bash deploy/scaleway/cloud.sh up
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### MeetingMind cloud" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.up.outputs.public_ip }}" ]; then
+            IP="${{ steps.up.outputs.public_ip }}"
+            echo "✅ **Online** at \`$IP\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- Frontend: https://$IP (accept self-signed cert)" >> $GITHUB_STEP_SUMMARY
+            echo "- Backend: http://$IP:8000" >> $GITHUB_STEP_SUMMARY
+            echo "- SSH: \`ssh root@$IP\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Run **Cloud — Down** when you finish to stop billing." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Something failed — check the logs above." >> $GITHUB_STEP_SUMMARY
+          fi
