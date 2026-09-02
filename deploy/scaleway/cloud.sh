@@ -121,26 +121,45 @@ cmd_up() {
   require_env SCW_ACCESS_KEY SCW_SECRET_KEY SCW_DEFAULT_PROJECT_ID \
               MM_SSH_PRIVATE_KEY MM_SSH_PUBLIC_KEY MM_GH_PAT
 
-  local existing
-  existing="$(server_id)"
-  if [ -n "$existing" ]; then
-    warn "Server '${MM_SERVER_NAME}' already exists (${existing}). Reusing it."
+  # The persistent SBS data volume exists across cycles — ensure it first so
+  # both the create and reuse paths can attach it.
+  local vid sid
+  vid="$(ensure_data_volume)"
+
+  sid="$(server_id)"
+  if [ -n "$sid" ]; then
+    warn "Server '${MM_SERVER_NAME}' already exists (${sid}). Reusing it."
   else
-    local vid userdata
-    vid="$(ensure_data_volume)"
+    local userdata
     userdata="$(ssh_userdata_file)"
 
+    # NOTE: an existing SBS volume cannot be attached inline at create time
+    # (the additional-volumes builder can't infer its type) — we attach it
+    # separately below.
     log "Creating GPU server ${MM_SERVER_NAME} (${MM_SERVER_TYPE} @ ${MM_ZONE})..."
     scw instance server create \
       name="${MM_SERVER_NAME}" \
       type="${MM_SERVER_TYPE}" \
       image="${MM_IMAGE}" \
       root-volume="sbs:${MM_ROOT_VOLUME_SIZE}:${MM_ROOT_IOPS}" \
-      additional-volumes.0="${vid}" \
       ip=new \
       cloud-init=@"${userdata}" \
       -w >/dev/null
     ok "Server created and running."
+    sid="$(server_id)"
+  fi
+
+  # Attach the persistent data volume (idempotent — skip if already attached).
+  local attached
+  attached="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+              | jq -r --arg s "${sid}" '[.references[]?.product_resource_id] | index($s) // empty')"
+  if [ -n "$attached" ]; then
+    log "Data volume already attached."
+  else
+    log "Attaching persistent data volume ${vid}..."
+    scw instance server attach-volume \
+      server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null
+    ok "Data volume attached."
   fi
 
   local ip key
