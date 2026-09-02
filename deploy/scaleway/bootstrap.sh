@@ -19,15 +19,33 @@ log() { printf '\033[1;36m[boot]\033[0m %s\n' "$*"; }
 
 # --- 1. Mount the persistent data volume ------------------------------------
 log "Locating persistent data volume..."
+
+# The non-boot disk = the extra block device (our SBS data volume). Retry with
+# a bus rescan to tolerate hot-plug latency after attach.
+find_data_disk() {
+  local root_src root_disk
+  root_src="$(findmnt -no SOURCE / 2>/dev/null)"
+  root_disk="/dev/$(lsblk -no PKNAME "${root_src}" 2>/dev/null | head -n1)"
+  lsblk -dpno NAME,TYPE | awk -v r="${root_disk}" '$2=="disk" && $1!=r {print $1; exit}'
+}
+
 if blkid -L "${MM_DATA_LABEL}" >/dev/null 2>&1; then
   DATA_DEV="$(blkid -L "${MM_DATA_LABEL}")"
   log "Found formatted data volume: ${DATA_DEV}"
 else
-  # First boot: find the disk that isn't the boot disk and format it.
-  ROOT_SRC="$(findmnt -no SOURCE /)"
-  ROOT_DISK="/dev/$(lsblk -no PKNAME "${ROOT_SRC}" | head -n1)"
-  DATA_DEV="$(lsblk -dpno NAME,TYPE | awk -v r="${ROOT_DISK}" '$2=="disk" && $1!=r {print $1; exit}')"
-  [ -n "${DATA_DEV}" ] || { echo "No data disk found to format"; exit 1; }
+  DATA_DEV=""
+  for attempt in $(seq 1 12); do
+    DATA_DEV="$(find_data_disk)"
+    [ -n "${DATA_DEV}" ] && break
+    log "Data disk not visible yet (attempt ${attempt}) — rescanning bus..."
+    for h in /sys/class/scsi_host/host*/scan; do echo "- - -" >"$h" 2>/dev/null || true; done
+    partprobe >/dev/null 2>&1 || true
+    sleep 5
+  done
+  if [ -z "${DATA_DEV}" ]; then
+    echo "No data disk found after waiting. Current block devices:"; lsblk || true
+    exit 1
+  fi
   log "Formatting fresh data volume ${DATA_DEV} as ext4 (label ${MM_DATA_LABEL})..."
   mkfs.ext4 -F -L "${MM_DATA_LABEL}" "${DATA_DEV}"
 fi
