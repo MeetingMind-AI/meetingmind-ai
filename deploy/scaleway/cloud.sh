@@ -31,9 +31,11 @@ source "${SCRIPT_DIR}/config.env"
 # Scaleway CLI reads SCW_DEFAULT_ZONE for zone-scoped commands.
 export SCW_DEFAULT_ZONE="${MM_ZONE}"
 
-log()  { printf '\033[1;36m[cloud]\033[0m %s\n' "$*"; }
-ok()   { printf '\033[1;32m[ ok ]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
+# Diagnostics go to stderr so functions can return a clean value on stdout via
+# command substitution (e.g. `vid="$(ensure_data_volume)"`).
+log()  { printf '\033[1;36m[cloud]\033[0m %s\n' "$*" >&2; }
+ok()   { printf '\033[1;32m[ ok ]\033[0m %s\n' "$*" >&2; }
+warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[fail]\033[0m %s\n' "$*" >&2; exit 1; }
 
 require_env() {
