@@ -126,6 +126,18 @@ free_data_volume() {
   fi
 }
 
+# Poll until the SBS volume reports status=available (i.e. not attached), so a
+# just-detached volume is ready to attach. Never blocks on an unknown shape.
+wait_volume_available() {
+  local vid="$1" st
+  for i in $(seq 1 12); do
+    st="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null | jq -r '.status // ""')" || st=""
+    [ -z "${st}" ] && return 0
+    [ "${st}" = "available" ] && return 0
+    sleep 5
+  done
+}
+
 # --- SSH ---------------------------------------------------------------------
 
 ssh_key_file() {
@@ -163,6 +175,14 @@ cmd_up() {
   local vid sid
   vid="$(ensure_data_volume)"
 
+  # Guard against leftover duplicate servers from earlier failed runs — those
+  # confuse volume attachment. Down deletes them all.
+  local count
+  count="$(scw instance server list name="${MM_SERVER_NAME}" -o json 2>/dev/null | jq -r 'length')" || count=0
+  if [ "${count:-0}" -gt 1 ]; then
+    die "Found ${count} servers named '${MM_SERVER_NAME}' (leftovers from failed runs). Run 'Cloud — Down' first (it deletes them all), then Up."
+  fi
+
   sid="$(server_id)"
   if [ -n "$sid" ]; then
     warn "Server '${MM_SERVER_NAME}' already exists (${sid}). Reusing it."
@@ -187,20 +207,23 @@ cmd_up() {
   fi
 
   # Attach the persistent data volume (idempotent — skip if already attached).
-  # Detect via the server's own volume list; guard the substitution so a failed
-  # query can't trip `set -e`/pipefail.
   local attached=""
   attached="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null \
               | jq -r --arg v "${vid}" '[.volumes[]?.id] | index($v) // empty')" || attached=""
   if [ -n "$attached" ]; then
     log "Data volume already attached."
   else
-    free_data_volume "${vid}" "${sid}"   # detach from any leftover server first
+    free_data_volume "${vid}" "${sid}"     # detach from any leftover holder
+    wait_volume_available "${vid}"         # wait until it is free to attach
     log "Attaching persistent data volume ${vid}..."
-    scw instance server attach-volume \
-      server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>&1 \
-      || warn "attach-volume returned non-zero (already attached?) — continuing."
-    ok "Data volume attach step done."
+    local err; err="$(mktemp)"
+    if ! scw instance server attach-volume \
+           server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>"${err}"; then
+      warn "attach-volume failed. Real error:"; cat "${err}" >&2 || true
+      warn "Volume state:"; scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null | jq -c '{status, references}' >&2 || true
+      die "Could not attach data volume ${vid}. If it is stuck on a ghost server, run 'Cloud — Down' with wipe_volume=true, then Up."
+    fi
+    ok "Data volume attached."
   fi
 
   local ip key
@@ -240,50 +263,45 @@ EOF
 cmd_down() {
   require_env SCW_ACCESS_KEY SCW_SECRET_KEY SCW_DEFAULT_PROJECT_ID
 
-  local sid
-  sid="$(server_id)"
-  if [ -z "$sid" ]; then
-    ok "No server named '${MM_SERVER_NAME}' — nothing to delete. You are not being billed for compute."
-    return 0
-  fi
-
-  log "Powering off ${MM_SERVER_NAME} (${sid})..."
-  scw instance server stop "${sid}" -w >/dev/null 2>&1 || warn "stop returned non-zero (maybe already stopped)."
-
-  # Detach the persistent data volume FIRST so deleting the server can't take
-  # it. If we can't confirm the detach, we abort before deleting — losing the
-  # data volume is worse than leaving a stopped server around.
   local vid
   vid="$(data_volume_id)"
-  if [ -n "$vid" ]; then
-    log "Detaching persistent data volume ${vid} (keeping it)..."
-    scw instance server detach-volume server-id="${sid}" volume-id="${vid}" >/dev/null 2>&1 || true
-    # Confirm it is no longer among the server's volumes (guarded substitution).
-    local still=""
-    still="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null \
-             | jq -r --arg v "${vid}" '[.volumes[]?.id] | index($v) // empty')" || still=""
-    if [ -n "$still" ]; then
-      die "Data volume ${vid} is still attached to the server — refusing to delete. Detach it in the console, then re-run Down."
+
+  # Delete EVERY server with our name (failed runs can leave duplicates). For
+  # each: detach the persistent volume first, then delete server + boot + IP.
+  local ids
+  ids="$(scw instance server list name="${MM_SERVER_NAME}" -o json 2>/dev/null | jq -r '.[].id')" || ids=""
+  if [ -z "$ids" ]; then
+    ok "No server named '${MM_SERVER_NAME}' — no compute billing."
+  fi
+  local sid ipid
+  for sid in $ids; do
+    log "Powering off ${sid}..."
+    scw instance server stop "${sid}" -w >/dev/null 2>&1 || true
+    if [ -n "$vid" ]; then
+      scw instance server detach-volume server-id="${sid}" volume-id="${vid}" >/dev/null 2>&1 || true
     fi
-    ok "Data volume detached and safe."
+    ipid="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null | jq -r '.public_ip.id // empty')" || ipid=""
+    # with-volumes=root deletes ONLY the boot volume — never the persistent one.
+    log "Deleting server ${sid}..."
+    scw instance server delete "${sid}" with-volumes=root with-ip=true force-shutdown=true -w >/dev/null 2>&1 \
+      || scw instance server delete "${sid}" with-volumes=root >/dev/null 2>&1 || true
+    [ -n "$ipid" ] && scw instance ip delete "${ipid}" >/dev/null 2>&1 || true
+  done
+  [ -n "$ids" ] && ok "All '${MM_SERVER_NAME}' servers deleted — compute billing stopped."
+
+  # Optional: wipe the persistent data volume too (set MM_WIPE_VOLUME=true).
+  # Safe when the volume holds nothing you want; goes to truly €0.
+  if [ "${MM_WIPE_VOLUME:-false}" = "true" ] && [ -n "$vid" ]; then
+    warn "Wiping persistent data volume ${vid} as requested..."
+    wait_volume_available "${vid}"
+    if scw block volume delete "${vid}" zone="${MM_ZONE}" >/dev/null 2>&1; then
+      ok "Data volume deleted. Now at €0. Next 'Up' creates a fresh one."
+    else
+      warn "Could not delete volume ${vid} (still attached?). Delete it in the console: Storage → Block."
+    fi
+  elif [ -n "$vid" ]; then
+    warn "Persistent data volume '${MM_DATA_VOLUME_NAME}' kept (small storage cost). Run Down with wipe_volume=true to remove it."
   fi
-
-  # Capture the public IP so we can release it (a reserved unused IP still costs).
-  local ipid
-  ipid="$(scw instance server list name="${MM_SERVER_NAME}" -o json | jq -r '.[0].public_ip.id // empty')"
-
-  # with-volumes=root deletes ONLY the boot volume — never the (already
-  # detached) persistent data volume, even if the detach above misbehaved.
-  log "Deleting server + its boot volume..."
-  scw instance server delete "${sid}" with-volumes=root with-ip=true force-shutdown=true -w >/dev/null 2>&1 \
-    || scw instance server delete "${sid}" with-volumes=root >/dev/null
-
-  if [ -n "$ipid" ]; then
-    scw instance ip delete "${ipid}" >/dev/null 2>&1 || true
-  fi
-
-  ok "Server deleted. Compute billing stopped."
-  warn "Persistent data volume '${MM_DATA_VOLUME_NAME}' kept (small storage cost). Delete it by hand to go to truly €0."
 }
 
 cmd_status() {
