@@ -1,0 +1,24 @@
+name: "🔎 Cloud — Status"
+
+# Manual button: is the GPU box currently up (and billing) or not?
+on:
+  workflow_dispatch:
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Scaleway CLI + jq
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          curl -fsSL https://github.com/scaleway/scaleway-cli/releases/latest/download/scaleway-cli_linux_amd64 \
+            -o /usr/local/bin/scw
+          sudo chmod +x /usr/local/bin/scw
+      - name: Report status
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_DEFAULT_PROJECT_ID }}
+          SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+        run: bash deploy/scaleway/cloud.sh status | tee -a "$GITHUB_STEP_SUMMARY"
