@@ -27,8 +27,10 @@ jobs:
       - name: Install Scaleway CLI + jq
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq jq
-          curl -fsSL https://github.com/scaleway/scaleway-cli/releases/latest/download/scaleway-cli_linux_amd64 \
-            -o /usr/local/bin/scw
+          URL=$(curl -fsSL https://api.github.com/repos/scaleway/scaleway-cli/releases/latest \
+            | grep -oE 'https://[^"]*_linux_amd64' | head -n1)
+          echo "Downloading $URL"
+          sudo curl -fsSL "$URL" -o /usr/local/bin/scw
           sudo chmod +x /usr/local/bin/scw
           scw version
 
