@@ -150,16 +150,19 @@ cmd_up() {
   fi
 
   # Attach the persistent data volume (idempotent — skip if already attached).
-  local attached
-  attached="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
-              | jq -r --arg s "${sid}" '[.references[]?.product_resource_id] | index($s) // empty')"
+  # Detect via the server's own volume list; guard the substitution so a failed
+  # query can't trip `set -e`/pipefail.
+  local attached=""
+  attached="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+              | jq -r --arg v "${vid}" '[.volumes[]?.id] | index($v) // empty')" || attached=""
   if [ -n "$attached" ]; then
     log "Data volume already attached."
   else
     log "Attaching persistent data volume ${vid}..."
     scw instance server attach-volume \
-      server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null
-    ok "Data volume attached."
+      server-id="${sid}" volume-id="${vid}" volume-type=sbs_volume >/dev/null 2>&1 \
+      || warn "attach-volume returned non-zero (already attached?) — continuing."
+    ok "Data volume attach step done."
   fi
 
   local ip key
@@ -217,10 +220,10 @@ cmd_down() {
   if [ -n "$vid" ]; then
     log "Detaching persistent data volume ${vid} (keeping it)..."
     scw instance server detach-volume server-id="${sid}" volume-id="${vid}" >/dev/null 2>&1 || true
-    # Confirm it is no longer attached to this server.
-    local still
-    still="$(scw block volume get "${vid}" zone="${MM_ZONE}" -o json 2>/dev/null \
-             | jq -r --arg s "${sid}" '[.references[]?.product_resource_id] | index($s) // empty')"
+    # Confirm it is no longer among the server's volumes (guarded substitution).
+    local still=""
+    still="$(scw instance server get "${sid}" zone="${MM_ZONE}" -o json 2>/dev/null \
+             | jq -r --arg v "${vid}" '[.volumes[]?.id] | index($v) // empty')" || still=""
     if [ -n "$still" ]; then
       die "Data volume ${vid} is still attached to the server — refusing to delete. Detach it in the console, then re-run Down."
     fi
