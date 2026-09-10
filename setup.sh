@@ -187,6 +187,12 @@ EOF
   else
     die "Vexa env example not found"
   fi
+  # Generate a unique INTERNAL_API_SECRET so Vexa v0.12 preflight checks pass (rejects published placeholders)
+  vexa_internal_secret=$(openssl rand -hex 32)
+  update_env_key "./vexa/.env" "INTERNAL_API_SECRET" "$vexa_internal_secret"
+  if [ -f "./vexa/deploy/compose/.env" ]; then
+    update_env_key "./vexa/deploy/compose/.env" "INTERNAL_API_SECRET" "$vexa_internal_secret"
+  fi
   log_ok "Vexa .env prepared"
 
   log_step "Pulling Vexa bot image"
