@@ -7,7 +7,7 @@ Modern software teams run different Agile ceremonies—daily standups, sprint pl
 - **Product Managers** track scope changes, user stories, customer impact, and roadmap alignment.
 - **Team Members (Developers & Designers)** require deep focus; constant popups and audio chimes for general meeting logistics cause cognitive overload and alert fatigue.
 
-**MeetingMind-AI** implements an intelligent **Agile Role-Based Notification Architecture**. Team members are assigned distinct agile personas with customizable notification preference profiles that govern how real-time micro-summaries, proposals, and audio chimes are delivered during live meetings.
+**MeetingMind AI** implements an intelligent **Agile Role-Based Notification Architecture**. Team members are assigned distinct agile personas with customizable notification preference profiles that govern how real-time micro-summaries, proposals, and audio chimes are delivered during live meetings.
 
 ---
 

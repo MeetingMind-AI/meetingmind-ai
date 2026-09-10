@@ -7,7 +7,7 @@ In any meeting intelligence platform, transcript accuracy is paramount. Automati
 - **Speaker Misattribution**: Overlapping speakers or imperfect audio separation causing statements to be credited to the wrong participant.
 - **Audio Dropouts**: Missed sentences due to momentary packet loss or background noise.
 
-Traditional meeting assistants process transcripts once and bake mistakes into the final summary forever. **MeetingMind-AI** introduces a complete **Transcript Auditing, Editing, and Re-Summarization Lifecycle** with zero-loss rollback, manual chunk insertion, live thought streaming, and cancellation support.
+Traditional meeting assistants process transcripts once and bake mistakes into the final summary forever. **MeetingMind AI** introduces a complete **Transcript Auditing, Editing, and Re-Summarization Lifecycle** with zero-loss rollback, manual chunk insertion, live thought streaming, and cancellation support.
 
 ---
 

@@ -1,6 +1,6 @@
 # MeetingMind AI Documentation Hub
 
-Welcome to the central documentation hub for **MeetingMind-AI**—a self-hosted, offline-first multi-agent meeting assistant engineered for Agile software engineering operations.
+Welcome to the central documentation hub for **MeetingMind AI**—a self-hosted, offline-first multi-agent meeting assistant engineered for Agile software engineering operations.
 
 ## Core System Specifications
 
@@ -11,7 +11,7 @@ Welcome to the central documentation hub for **MeetingMind-AI**—a self-hosted,
 - **[Monorepo Guide](architecture/monorepo.md)**: Monorepo layout, Git submodule management, hardware performance tuning, Ollama concurrency, and setup automation scripts.
 - **[Backend Architecture](architecture/backend.md)**: FastAPI asynchronous REST gateway, ControllerAgent orchestration, WebSocket streaming, and background task lifecycle.
 - **[Frontend Architecture](architecture/frontend.md)**: React 18 + Vite SPA design, real-time live meeting interface, Kanban boards, and Document PiP integration.
-- **[System Dependencies](architecture/dependencies.md)**: Deep dive into core dependencies: Ollama LLMs (`hermes3:8b`, `qwen2.5:14b`), Mem0 + Qdrant semantic memory, Vexa sensor bots, Resend HTTP email API, and Chrome Document PiP.
+- **[System Dependencies](architecture/dependencies.md)**: Deep dive into core dependencies: Ollama LLM (`hermes3:8b`), Mem0 + Qdrant semantic memory, Vexa sensor bots, Resend HTTP email API, and Chrome Document PiP.
 - **[Setup Profiles](architecture/setup-profiles.md)**: Configuration profiles for Linux NVIDIA GPU, Apple Silicon macOS, Windows WSL2, and CPU fallback.
 - **[Apple Silicon Metal Optimization](apple-silicon-optimization.md)**: Native host routing via `host.docker.internal:11434` for high-throughput Metal GPU acceleration.
 - **[Troubleshooting Guide](architecture/troubleshooting.md)**: Diagnostic routines for common issues across Docker, Vexa, database migrations, and Ollama model pulls.

@@ -1,4 +1,4 @@
-# MeetingMind — Frontend Architecture
+# MeetingMind AI Frontend Architecture
 
 React + Vite frontend for MeetingMind AI. Served in production by Nginx inside Docker, with all `/api/*` requests proxied to the FastAPI backend.
 

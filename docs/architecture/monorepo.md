@@ -30,7 +30,7 @@ ollama:
 
 Requests beyond the parallel limit are queued automatically (up to 512 by default).
 
-The Ollama container is configured for 16 GB VRAM with `OLLAMA_MAX_VRAM=16384` and `OLLAMA_KV_CACHE_TYPE=q8_0` in `docker-compose.yml`. For complex synthesis on large transcripts, `qwen2.5:14b` can also be deployed with appropriate KV cache sizing.
+The Ollama container is configured for 16 GB VRAM with `OLLAMA_MAX_VRAM=16384` and `OLLAMA_KV_CACHE_TYPE=q8_0` in `docker-compose.yml`. Larger parameter models can also be configured with appropriate KV cache sizing.
 
 ## Typical Flow
 
@@ -101,7 +101,7 @@ The monorepo provides automated management scripts located at the project root:
 | `make setup` / `./setup.sh` | Interactive Cold-Start | Configures `.env` files, boots PostgreSQL, Redis, Qdrant, provisions Vexa bot and Whisper STT, runs Alembic migrations, and pulls Ollama models. |
 | `./setup.sh --non-interactive` | Headless Automation | Performs full cold-start setup without prompting for optional settings; ideal for CI/CD pipelines and headless VM initialization. |
 | `make rebuild` | Safe Code Refresh | Executes `docker compose up -d --build` for main stack and restarts/rebuilds the Vexa sensor stack without wiping database volumes. |
-| `./change_models.sh` | Interactive Model Configurator | Prompts for target LLM (`hermes3:8b`, `qwen2.5:14b`) and Whisper STT model (`small.en`, `large-v3-turbo`), updates `.env` files, and restarts services. |
+| `./change_models.sh` | Interactive Model Configurator | Prompts for target LLM (`hermes3:8b`, etc.) and Whisper STT model (`small.en`, `large-v3-turbo`), updates `.env` files, and restarts services. |
 | `./update_vexa.sh` | Vexa Submodule Update | Pulls the latest commits from the Vexa Git submodule, pulls new Docker images, and restarts Vexa bot containers. |
 
 ---
@@ -113,7 +113,7 @@ Key environment variables configured in `./.env` (and passed to Docker container
 | Variable | Default / Example | Purpose |
 |---|---|---|
 | `OLLAMA_MODEL` | `hermes3:8b` | Primary LLM used for live transcript proposals, Instant Clarity, and persona analysis. |
-| `OLLAMA_FINAL_MODEL` | `hermes3:8b` | Model used for final Scrum Master synthesis (`qwen2.5:14b` for high-context mode). |
+| `OLLAMA_FINAL_MODEL` | `hermes3:8b` | Model used for final Scrum Master synthesis (defaults to base `OLLAMA_MODEL`). |
 | `OLLAMA_URL` | *(platform-dependent — see note below)* | API endpoint for Ollama text generation. |
 | `MEM0_OLLAMA_URL` | *(platform-dependent — see note below)* | Ollama root URL for Mem0 memory embeddings. |
 | `MEM0_LLM_MODEL` | `hermes3:8b` | LLM used by Mem0 for cross-meeting extraction. |

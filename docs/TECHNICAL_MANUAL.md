@@ -5,12 +5,12 @@
 
 ### Executive Summary & System Abstract
 
-**MeetingMind-AI** is an academic-grade, self-hosted, offline-first multi-agent meeting assistant engineered specifically for Agile software engineering teams and university research laboratories. Modern cloud-based automated meeting tools (such as Otter.ai, Fireflies.ai, and Zoom AI Companion) introduce fundamental structural deficiencies:
+**MeetingMind AI** is an academic-grade, self-hosted, offline-first multi-agent meeting assistant engineered specifically for Agile software engineering teams and university research laboratories. Modern cloud-based automated meeting tools (such as Otter.ai, Fireflies.ai, and Zoom AI Companion) introduce fundamental structural deficiencies:
 1. **Privacy & Data Residency Vulnerabilities**: Transmitting raw, confidential meeting audio and proprietary codebase discussions to third-party cloud infrastructure violates enterprise security policies, academic IP non-disclosure agreements, and regulatory frameworks (e.g., GDPR, HIPAA).
 2. **Contextual Loss in Single-Prompt LLMs**: Naive, single-prompt summarization algorithms compress complex technical debates into generic bullet points. They fail to represent domain-specific trade-offs between architectural technical debt and product milestone delivery schedules.
 3. **Lack of Continuous Long-Term Memory**: Existing tools process each meeting in isolated silos, lacking cross-meeting memory of historical agreements, unresolved blockers, or ongoing team commitments.
 
-MeetingMind-AI resolves these challenges through a unified, offline-first monorepo platform. The system combines local automatic speech recognition (ASR via local Whisper models), local open-weight Large Language Models (LLMs via Ollama), long-term semantic vector memory (Mem0 backed by Qdrant), and a multi-agent debate framework based on the **BOLAA** (Orchestrated Multi-Agent Discussion) paradigm.
+MeetingMind AI resolves these challenges through a unified, offline-first monorepo platform. The system combines local automatic speech recognition (ASR via local Whisper models), local open-weight Large Language Models (LLMs via Ollama), long-term semantic vector memory (Mem0 backed by Qdrant), and a multi-agent debate framework based on the **BOLAA** (Orchestrated Multi-Agent Discussion) paradigm.
 
 This document serves as the official technical manual for academic evaluation, software architecture review, and deployment verification by university faculty, computer science researchers, and system administrators.
 
@@ -20,7 +20,7 @@ This document serves as the official technical manual for academic evaluation, s
 
 ### 1.1 Dual-Zone Architectural Topology & Component Interactions
 
-MeetingMind-AI is architected around a strict **Dual-Zone Decoupled Topology**, separating real-time audio perception sensors from core intelligence, persistent storage, and cognitive orchestration.
+MeetingMind AI is architected around a strict **Dual-Zone Decoupled Topology**, separating real-time audio perception sensors from core intelligence, persistent storage, and cognitive orchestration.
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -70,13 +70,13 @@ MeetingMind-AI is architected around a strict **Dual-Zone Decoupled Topology**, 
 - **Relational Storage (PostgreSQL 15)**: Persists user credentials, team memberships, meeting metadata, structured transcript chunks, and action item records.
 - **Transient State & Caching (Redis 7)**: Provides sub-millisecond session state management, real-time query caching for Instant Clarity, and pub/sub message routing.
 - **Vector Memory (Qdrant + Mem0)**: Stores semantic embeddings of past meeting decisions, technical debt items, and team commitments for cross-meeting memory retrieval.
-- **Local LLM Engine (Ollama on Port 11434)**: Executes open-weight LLMs (`hermes3:8b`, `qwen2.5:14b`, `nomic-embed-text`) with hardware-accelerated local inference.
+- **Local LLM Engine (Ollama on Port 11434)**: Executes open-weight LLMs (`hermes3:8b`, `nomic-embed-text`) with hardware-accelerated local inference.
 
 ---
 
 ### 1.2 Offline-First & Privacy Architecture
 
-MeetingMind-AI is built on a **Zero-Cloud-Dependency Security Posture**. The system operates entirely within a self-contained local network boundary or air-gapped environment.
+MeetingMind AI is built on a **Zero-Cloud-Dependency Security Posture**. The system operates entirely within a self-contained local network boundary or air-gapped environment.
 
 ```
                     AIR-GAPPED SECURITY BOUNDARY
@@ -85,9 +85,9 @@ MeetingMind-AI is built on a **Zero-Cloud-Dependency Security Posture**. The sys
 |  +-------------------+       REST        +----------------------+  |
 |  |  FastAPI Backend  | <---------------> |  Ollama LLM Engine   |  |
 |  +-------------------+                   |  • hermes3:8b        |  |
-|            |                             |  • qwen2.5:14b       |  |
 |            |                             |  • nomic-embed-text  |  |
-|            v                             +----------------------+  |
+|            |                             +----------------------+  |
+|            v                                                       |
 |  +-------------------+                                             |
 |  |  Qdrant Vector DB | <--- Mem0 Semantic Embeddings               |
 |  +-------------------+                                             |
@@ -102,7 +102,7 @@ MeetingMind-AI is built on a **Zero-Cloud-Dependency Security Posture**. The sys
 ```
 
 #### Privacy & Security Guarantees:
-- **100% Local Inference**: All language generation, extraction, and debate tasks are executed via Ollama instances using open-weight models (`hermes3:8b` and `qwen2.5:14b`).
+- **100% Local Inference**: All language generation, extraction, and debate tasks are executed via Ollama instances using open-weight models (`hermes3:8b`). Higher-parameter models can be configured optionally via `./change_models.sh`.
 - **Local Embedding Vector Space**: Text vectorization for long-term memory utilizes `nomic-embed-text` running locally within Ollama, ensuring vector search indexes remain on-premise.
 - **Local Automatic Speech Recognition**: Audio stream transcription is executed inside the Vexa container using local Whisper weights, preventing raw audio or transcripts from leaving the local host.
 - **Zero Third-Party Telemetry**: Neither user data, transcripts, embeddings, nor metadata are transmitted to external endpoints.
@@ -111,7 +111,7 @@ MeetingMind-AI is built on a **Zero-Cloud-Dependency Security Posture**. The sys
 
 ### 1.3 Multi-Agent Meeting Pipeline (BOLAA Orchestration Framework)
 
-The cognitive core of MeetingMind-AI is managed by the `ControllerAgent` (`backend/app/engine/controller.py`) implementing a multi-stage **BOLAA (Orchestrated Multi-Agent Discussion)** pipeline:
+The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backend/app/engine/controller.py`) implementing a multi-stage **BOLAA (Orchestrated Multi-Agent Discussion)** pipeline:
 
 ```
         Live Transcript Chunks + Pre-Meeting Mem0 Historical Context
@@ -201,7 +201,7 @@ The cognitive core of MeetingMind-AI is managed by the `ControllerAgent` (`backe
    - An automated, professionally styled HTML meeting report is generated and previewed via `GET /api/meetings/{id}/email-preview`. Upon confirmation, the report is dispatched via the **Resend HTTP API** (`POST /api/meetings/{id}/send-email`) directly over HTTPS (port 443), overcoming standard cloud VM outbound SMTP port blocks (ports 25/465/587).
 
 10. **Hardware Acceleration & Host Routing Topology**:
-    - **Apple Silicon macOS**: Leverages native Apple Metal acceleration by executing Ollama on the host machine and routing container traffic through `http://host.docker.internal:11434`. The Docker Ollama container is safely stopped to prevent memory duplication, allowing models like `qwen2.5:14b` and `hermes3:8b` to execute at peak unified-memory bandwidth.
+    - **Apple Silicon macOS**: Leverages native Apple Metal acceleration by executing Ollama on the host machine and routing container traffic through `http://host.docker.internal:11434`. The Docker Ollama container is safely stopped to prevent memory duplication, allowing models like `hermes3:8b` to execute at peak unified-memory bandwidth.
     - **Linux NVIDIA GPU**: Leverages the NVIDIA Container Toolkit with `nvidia-smi -pm 1` (persistence mode enabled), dedicating 16GB+ VRAM, allocating `shm_size: 2gb` to eliminate tensor IPC bus errors, configuring `OLLAMA_NUM_PARALLEL: "2"` for concurrent persona inference, and setting `oom_score_adj: -500` to safeguard the PostgreSQL database from kernel memory termination.
 
 ---
@@ -217,7 +217,7 @@ The cognitive core of MeetingMind-AI is managed by the `ControllerAgent` (`backe
 | **Relational Database** | PostgreSQL | 15.0+ (JSONB enabled) | Primary persistent data store |
 | **Transient Caching** | Redis | 7.0+ | Sub-second caching for Instant Clarity & sessions |
 | **Vector Engine** | Qdrant / Mem0 | Qdrant 1.8+, Mem0 0.1+ | Semantic long-term vector memory store |
-| **Local LLM Engine** | Ollama | 0.1.30+ | Local model execution (`hermes3:8b`, `qwen2.5:14b`) |
+| **Local LLM Engine** | Ollama | 0.1.30+ | Local model execution (`hermes3:8b`) |
 | **Local Embeddings** | Nomic Embed Text | `nomic-embed-text` | Local vector embedding model via Ollama |
 | **Frontend Framework** | React / Vite | React 18, Vite 5 | SPA interface with real-time UI components |
 | **Reverse Proxy** | Nginx | 1.25+ (SSL TLS 1.3) | Secure HTTPS reverse proxy & static file host |
@@ -396,7 +396,7 @@ The platform supports four deployment profiles tuned for varying hardware enviro
 
 2. **Apple Silicon macOS Profile**:
    - Utilizes native metal acceleration by running Ollama natively on macOS host (`http://host.docker.internal:11434`).
-   - Unified memory configuration permits running `qwen2.5:14b` with high token generation speeds.
+   - Unified memory configuration permits running local models with high token generation speeds.
 
 3. **Windows WSL2 Profile**:
    - Executes Docker Desktop inside WSL2 Ubuntu environment with CUDA passthrough.
@@ -521,7 +521,7 @@ Action items extracted during live meetings or post-meeting synthesis are strict
 
 ### 3.4 Systematic Evaluation: Single-Prompt LLM vs. MeetingMind Multi-Agent Assistant
 
-| Architectural Dimension | Generic Single-Prompt Cloud Assistants (e.g., Otter.ai, Fireflies.ai) | MeetingMind-AI Multi-Agent Assistant |
+| Architectural Dimension | Generic Single-Prompt Cloud Assistants (e.g., Otter.ai, Fireflies.ai) | MeetingMind AI Multi-Agent Assistant |
 |---|---|---|
 | **Privacy & Data Residency** | Cloud-based; sensitive audio and IP uploaded to external 3rd-party servers. | **100% Offline-First**; local Whisper ASR and local LLMs (Ollama) ensure zero data exfiltration. |
 | **Conflict Resolution** | Fails; compresses technical vs product disagreements into single flattened summaries. | **Multi-Persona Debate (BOLAA)**; explicit debate rounds between Tech Lead and PM agents resolve trade-offs. |
@@ -537,11 +537,11 @@ Action items extracted during live meetings or post-meeting synthesis are strict
 
 ### 4.1 System Diagnostic & Health Endpoints
 
-MeetingMind-AI provides granular, real-time diagnostic probing across all underlying microservices and hardware inference layers:
+MeetingMind AI provides granular, real-time diagnostic probing across all underlying microservices and hardware inference layers:
 
 - **Unified System Diagnostics (`GET /api/system/status`)**:
   Performs real-time, non-blocking asynchronous health checks across all backend subsystems and returns unified JSON telemetry:
-  - **Ollama Engine**: Probes base URL (`_extract_ollama_base_url`), detects deployment environment (`host` via `host.docker.internal` vs `docker` container), checks engine version and round-trip HTTP latency, enumerates installed tags, verifies presence of configured models (`hermes3:8b`, `qwen2.5:14b`), and inspects `/api/ps` to track active VRAM/RAM model footprint.
+  - **Ollama Engine**: Probes base URL (`_extract_ollama_base_url`), detects deployment environment (`host` via `host.docker.internal` vs `docker` container), checks engine version and round-trip HTTP latency, enumerates installed tags, verifies presence of configured models (`hermes3:8b`), and inspects `/api/ps` to track active VRAM/RAM model footprint.
   - **PostgreSQL Database**: Executes `SELECT 1` ping and reports query latency in milliseconds.
   - **Redis Cache & Broker**: Executes `aioredis.ping()` and reports socket latency.
   - **Qdrant Vector Database**: Queries `/healthz` and verifies semantic collection accessibility.
@@ -574,4 +574,4 @@ To sync and update the Vexa sensor zone submodule:
 
 ## 5. Conclusion & Academic Attestation
 
-MeetingMind-AI demonstrates a robust, production-ready, and academically rigorous architecture for offline-first Agile meeting assistance. By combining decoupled sensor/brain topology, zero-cloud local LLM execution, multi-agent cross-functional debate, and continuous vector memory, the system overcomes the security, contextual, and architectural limitations of traditional meeting tools.
+MeetingMind AI demonstrates a robust, production-ready, and academically rigorous architecture for offline-first Agile meeting assistance. By combining decoupled sensor/brain topology, zero-cloud local LLM execution, multi-agent cross-functional debate, and continuous vector memory, the system overcomes the security, contextual, and architectural limitations of traditional meeting tools.

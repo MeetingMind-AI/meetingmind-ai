@@ -27,12 +27,11 @@ MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot in
 
 | Task | Default Model | Runtime / Engine | Notes |
 |---|---|---|---|
-| **Summarization & Debate** | `hermes3:8b` | Ollama (Local) | Optimized for multi-persona reasoning and instruction following |
-| **Advanced Synthesis** | `qwen2.5:14b` | Ollama (Local) | High-fidelity synthesis for large context and complex debate logs |
+| **LLM Inference (Extraction, Debate, Synthesis)** | `hermes3:8b` | Ollama (Local) | Fast multi-persona reasoning, instruction following, and structured JSON output |
 | **Vector Embeddings** | `nomic-embed-text` | Ollama (Local) | 768-dim embeddings powering Mem0 long-term memory in Qdrant |
-| **Speech-to-Text (STT)** | `small.en` | Local Whisper | CPU-optimized (~18× real-time, drift-free); GPU supports `large-v3-turbo` |
+| **Speech-to-Text (STT)** | `small.en` | Local Whisper | CPU-optimized (~18x real-time, drift-free); GPU setups can select `large-v3-turbo` |
 
-Models can be reconfigured dynamically at any time using `./change_models.sh`.
+Alternative models (such as `qwen2.5:14b` for high-VRAM GPU setups) can be configured dynamically at any time using `./change_models.sh`.
 
 ## Documentation
 
@@ -188,14 +187,14 @@ Once the setup completes and all containers are running, open the app in your br
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
 
 ## Changing AI Models
-
-By default, MeetingMind runs `hermes3:8b` for summarization/debate, supports `qwen2.5:14b` for advanced synthesis, `nomic-embed-text` for vector embeddings, and `small.en` for Whisper transcription (optimised for English on CPU — ~18× faster than real-time with zero language-detection drift; GPU setups can select `large-v3-turbo`). You can easily switch models using the included interactive configuration script:
-
+ 
+By default, MeetingMind runs `hermes3:8b` for summarization, debate, and final synthesis, `nomic-embed-text` for vector embeddings, and `small.en` for Whisper transcription (optimized for English on CPU with ~18x real-time performance and zero language-detection drift; GPU setups can select `large-v3-turbo`). You can easily switch models using the included interactive configuration script:
+ 
 ```bash
 ./change_models.sh
 ```
-
-This script prompts you for the new LLM and Whisper model names, updates the appropriate `.env` files, and safely restarts the affected Docker containers to apply changes immediately.
+ 
+This script prompts for new LLM and Whisper model names, updates the appropriate `.env` files, and safely restarts the affected Docker containers to apply changes immediately.
 
 ## Updating Vexa
 
