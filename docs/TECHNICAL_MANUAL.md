@@ -5,7 +5,7 @@
 
 ### Executive Summary & System Abstract
 
-**MeetingMind AI** is an academic-grade, self-hosted, offline-first multi-agent meeting assistant engineered specifically for Agile software engineering teams and university research laboratories. Modern cloud-based automated meeting tools (such as Otter.ai, Fireflies.ai, and Zoom AI Companion) introduce fundamental structural deficiencies:
+**MeetingMind AI** is an academic-grade, self-hosted, offline-first multi-agent meeting assistant engineered specifically for Agile software engineering teams and university research laboratories. Modern cloud-based automated meeting tools (such as Otter.ai and Fireflies.ai) introduce fundamental structural deficiencies:
 1. **Privacy & Data Residency Vulnerabilities**: Transmitting raw, confidential meeting audio and proprietary codebase discussions to third-party cloud infrastructure violates enterprise security policies, academic IP non-disclosure agreements, and regulatory frameworks (e.g., GDPR, HIPAA).
 2. **Contextual Loss in Single-Prompt LLMs**: Naive, single-prompt summarization algorithms compress complex technical debates into generic bullet points. They fail to represent domain-specific trade-offs between architectural technical debt and product milestone delivery schedules.
 3. **Lack of Continuous Long-Term Memory**: Existing tools process each meeting in isolated silos, lacking cross-meeting memory of historical agreements, unresolved blockers, or ongoing team commitments.
@@ -61,7 +61,7 @@ MeetingMind AI is architected around a strict **Dual-Zone Decoupled Topology**, 
 ```
 
 #### 1. Sensor Zone (`vexa/` Submodule)
-- **Headless Ingestion Bots**: Spawns containerized Node.js/Puppeteer Chromium instances to join Google Meet, Microsoft Teams, or Zoom calls as headless participants.
+- **Headless Ingestion Bots**: Spawns containerized Node.js/Puppeteer Chromium instances to join Google Meet or Microsoft Teams calls as headless participants.
 - **Local Audio Processing**: Captures WebRTC audio streams directly from the virtual browser context, passing raw PCM streams to local Whisper ASR models.
 - **Gateway Server**: Exposes REST interfaces on port `8056` for bot lifecycle management (`POST /bots`, `DELETE /bots/{platform}/{id}`) and admin monitoring on port `8057`.
 

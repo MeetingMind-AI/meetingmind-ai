@@ -12,7 +12,7 @@
 
 ---
 
-MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot into your meetings (Google Meet, Teams, Zoom, Jitsi) to transcribe, summarize, and generate structured Agile reports—all while keeping your data offline and secure.
+MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot into your meetings (Google Meet, Microsoft Teams) to transcribe, summarize, and generate structured Agile reports—all while keeping your data offline and secure.
 
 ## Key Feature Highlights
 
@@ -78,7 +78,7 @@ flowchart TD
     B -->|Inference| O
     B -->|Semantic Search| M
     V -->|Spawns| VB
-    VB -->|Joins Meet/Teams/Zoom| External(Meetings)
+    VB -->|Joins Meet/Teams| External(Meetings)
 ```
 
 - **Sensor Zone (`vexa/`)**

@@ -127,7 +127,7 @@ All team endpoints require a valid session cookie. Members-only actions return `
 
 - `POST /api/meetings/start`
   - Body: `{ "platform": "<platform>", "native_id": "<meeting-id>", "team_id": 1, "passcode": "" }`
-  - `platform` (required): `google_meet`, `zoom`, or `teams`
+  - `platform` (required): `google_meet` or `teams`
   - `team_id` (optional): associates the meeting with a team
   - `passcode` (optional): required for passcode-protected Teams meetings
   - Deploys a Vexa bot to join the meeting. Upserts the meeting record (re-uses existing row if `vexa_meeting_id` already exists). Schedules background tasks to poll transcripts and monitor the meeting lifecycle until completion. Returns `{"meeting_id": ...}`.
