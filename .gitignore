@@ -2,6 +2,8 @@
 *.DS_Store
 /.idea
 .env
+dist/
+build/
 
 # Scaleway lifecycle scratch files (secrets — never commit)
 deploy/scaleway/.ssh_key
