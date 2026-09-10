@@ -6,13 +6,14 @@
 - `frontend/`: frontend application
 - `vexa/`: Vexa submodule and bot services
 - `docker-compose.yml`: root local orchestration for backend/frontend/data services
+- `deploy/scaleway/`: on-demand cloud lifecycle — create/destroy a Scaleway L4 GPU box billed only while you use it (see [Cloud Deployment](#cloud-deployment-on-demand-gpu) below)
 
 ## Hardware & Performance Tuning (Linux + NVIDIA)
 
 The root `docker-compose.yml` applies several Linux-specific optimizations for a 16GB NVIDIA GPU:
 
 - **VRAM utilization:** `OLLAMA_NUM_PARALLEL: "2"` is tuned for 16GB cards so the Tech Lead and Product Manager agents can run in parallel using `hermes3:8b` (`q4_K_M`) plus `nomic-embed-text` without hitting OOM.
-- **Model eviction:** `OLLAMA_KEEP_ALIVE="60s"` aggressively clears idle models from VRAM after a meeting ends, keeping host resources free.
+- **Model residency:** `OLLAMA_KEEP_ALIVE="10h"` keeps models warm in VRAM across a working session, avoiding the multi-second reload cost on each new meeting/report. Lower it if you need to free VRAM aggressively between meetings.
 - **Shared memory:** `shm_size: '2gb'` is set on both `ollama` and `postgres` to prevent Linux bus errors during heavy tensor mutations and database workloads.
 - **OOM killer protection:** `oom_score_adj: -500` is applied to PostgreSQL so the kernel is less likely to terminate the database under RAM pressure.
 
@@ -131,6 +132,23 @@ Key environment variables configured in `./.env` (and passed to Docker container
 > - **Linux:** `OLLAMA_URL=http://ollama:11434/api/generate` and `MEM0_OLLAMA_URL=http://ollama:11434` (Ollama runs as the `ollama` Docker service inside the Compose network).
 
 ---
+
+## Cloud Deployment (on-demand GPU)
+
+For teams without a local GPU, the stack can run on a **Scaleway L4 GPU instance
+that is created and fully deleted on demand**, so compute is billed only while
+you are actually coding. A small persistent block volume keeps the Ollama
+models, Postgres and Qdrant data between sessions; the server, its boot disk and
+its public IP are deleted when you stop.
+
+- **Up / Down / Status** are GitHub Actions buttons (`workflow_dispatch`) plus
+  `make cloud-up` / `make cloud-down` / `make cloud-status`.
+- Lifecycle logic lives in `deploy/scaleway/cloud.sh`; the on-server bootstrap
+  (mount volume, point Docker's data-root at it, clone, run `setup.sh`) is in
+  `deploy/scaleway/bootstrap.sh`; the GPU override for Ollama is
+  `deploy/scaleway/docker-compose.gpu.yml`.
+- Full setup (Scaleway API keys, SSH key, submodule token, secrets) and daily
+  usage are documented in **[`deploy/scaleway/README.md`](../../deploy/scaleway/README.md)**.
 
 ## Operational Notes
 

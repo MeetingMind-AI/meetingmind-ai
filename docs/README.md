@@ -13,6 +13,7 @@ Welcome to the central documentation hub for **MeetingMind AI**—a self-hosted,
 - **[Frontend Architecture](architecture/frontend.md)**: React 18 + Vite SPA design, real-time live meeting interface, Kanban boards, and Document PiP integration.
 - **[System Dependencies](architecture/dependencies.md)**: Deep dive into core dependencies: Ollama LLM (`hermes3:8b`), Mem0 + Qdrant semantic memory, Vexa sensor bots, Resend HTTP email API, and Chrome Document PiP.
 - **[Setup Profiles](architecture/setup-profiles.md)**: Configuration profiles for Linux NVIDIA GPU, Apple Silicon macOS, Windows WSL2, and CPU fallback.
+- **[On-Demand Cloud Deployment (Scaleway GPU)](../deploy/scaleway/README.md)**: Create and fully delete a Scaleway L4 GPU box on demand — pay only while coding — driven by GitHub Actions buttons or `make cloud-*`.
 - **[Apple Silicon Metal Optimization](apple-silicon-optimization.md)**: Native host routing via `host.docker.internal:11434` for high-throughput Metal GPU acceleration.
 - **[Troubleshooting Guide](architecture/troubleshooting.md)**: Diagnostic routines for common issues across Docker, Vexa, database migrations, and Ollama model pulls.
 

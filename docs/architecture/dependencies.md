@@ -66,7 +66,7 @@ PY
 **How it works in the project:**
 - **Inference:** Used heavily during both live meeting ingestion (for instant clarity and insights) and post-meeting analysis (the multi-persona debate and final report generation).
 - **Embeddings:** Powers the `nomic-embed-text` embedding model utilized by Mem0 for semantic search.
-- **Performance:** Configured heavily in `docker-compose.yml` (e.g., `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_KEEP_ALIVE="60s"`) to optimize VRAM on GPUs for parallel inference between the Tech Lead and Product Manager agents.
+- **Performance:** Configured heavily in `docker-compose.yml` (e.g., `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_KEEP_ALIVE="10h"`) to optimize VRAM on GPUs for parallel inference between the Tech Lead and Product Manager agents.
 
 ## 4. Qdrant (Vector Database)
 

@@ -392,7 +392,7 @@ The platform supports four deployment profiles tuned for varying hardware enviro
 
 1. **Linux NVIDIA GPU Profile (Recommended Production Setup)**:
    - Configured in `docker-compose.yml` for dedicated GPU acceleration.
-   - Ollama parameters: `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_MAX_VRAM: "16384"`, `OLLAMA_KEEP_ALIVE: "60s"`.
+   - Ollama parameters: `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_MAX_VRAM: "16384"`, `OLLAMA_KEEP_ALIVE: "10h"`.
    - Docker container tuning: `shm_size: "2gb"`, `oom_score_adj: -500`.
    - Host driver setup: NVIDIA Driver 535+, NVIDIA Container Toolkit, persistence mode enabled (`nvidia-smi -pm 1`).
 
