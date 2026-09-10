@@ -10,7 +10,7 @@ MeetingMind integrates **Mem0** (using `mem0ai`) to provide cross-meeting semant
 - **Context Injection (Search):** Before running the final report analysis, the backend searches Mem0 using the first 1000 characters of the new meeting transcript (falling back to "General agile meeting" if too short). The retrieved memories are injected into the final LLM prompt context, allowing the report to reference past decisions and blockers.
 - **Memory Storage (Save):** After the report is generated, the backend persists the newly discovered action items, decisions, and blockers from the Tech Lead, Product Manager, and Scrum Master back into Mem0. These are scoped under the user ID `"team_{team_id}"` (or `"global_team"` if no team ID is provided).
 - **Backend Only:** The frontend does not call Mem0 directly; memory influences the backend summaries exclusively.
-- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, etc.). By default, it is configured to use the local Ollama instance for both text generation (`llama3.1`) and embeddings (`nomic-embed-text`), avoiding the need for OpenAI keys.
+- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, etc.). By default, it is configured to use the local Ollama instance for both text generation (`hermes3:8b`) and embeddings (`nomic-embed-text`), avoiding the need for OpenAI keys.
 
 ### Testing Mem0
 
@@ -31,7 +31,7 @@ config = {
     "llm": {
         "provider": "ollama",
         "config": {
-            "model": "llama3.1",
+            "model": "hermes3:8b",
             "ollama_base_url": "http://ollama:11434",
             "temperature": 0.1,
         },
@@ -66,7 +66,7 @@ PY
 **How it works in the project:**
 - **Inference:** Used heavily during both live meeting ingestion (for instant clarity and insights) and post-meeting analysis (the multi-persona debate and final report generation).
 - **Embeddings:** Powers the `nomic-embed-text` embedding model utilized by Mem0 for semantic search.
-- **Performance:** Configured heavily in `docker-compose.yml` (e.g., `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_KEEP_ALIVE="60s"`) to optimize VRAM on GPUs for parallel inference between the Tech Lead and Product Manager agents.
+- **Performance:** Configured heavily in `docker-compose.yml` (e.g., `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_KEEP_ALIVE="10h"`) to optimize VRAM on GPUs for parallel inference between the Tech Lead and Product Manager agents.
 
 ## 4. Qdrant (Vector Database)
 

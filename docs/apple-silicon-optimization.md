@@ -39,7 +39,7 @@ curl http://localhost:11434/api/tags
 *(You should get a JSON response listing `hermes3:8b` and `nomic-embed-text`)*
 
 #### 4. Update `.env` configuration
-In your project root `.env` file (`/Users/juvraj/Downloads/multidisciplinary_project/meetingmind-ai/.env`):
+In your project root `.env` file (`<project-root>/meetingmind-ai/.env`):
 ```env
 OLLAMA_URL=http://host.docker.internal:11434/api/generate
 MEM0_OLLAMA_URL=http://host.docker.internal:11434

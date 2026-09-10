@@ -34,7 +34,7 @@ cd meetingmind-ai
 docker compose up -d
 
 # Pull the required models into the running Ollama container
-docker compose exec ollama ollama pull llama3.1
+docker compose exec ollama ollama pull hermes3:8b
 docker compose exec ollama ollama pull nomic-embed-text
 ```
 
@@ -48,17 +48,17 @@ Docker Desktop on macOS runs inside a Linux VM. While Docker can't directly acce
 
 **Configuration:**
 1. In `docker-compose.yml`, comment out or remove the `ollama` service, as you will run it natively.
-2. In your backend environment (or `.env` file), point the `OLLAMA_BASE_URL` and Mem0 configs to your host machine:
+2. In your backend environment (or `.env` file), point the `OLLAMA_URL` and Mem0 configs to your host machine:
 ```env
 # Since Docker on Mac maps the host to host.docker.internal
-OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_URL=http://host.docker.internal:11434/api/generate
 MEM0_OLLAMA_URL=http://host.docker.internal:11434
 ```
 
 **Setup Commands:**
 ```bash
 # Run these commands in your Mac terminal (not in Docker)
-ollama pull llama3.1
+ollama pull hermes3:8b
 ollama pull nomic-embed-text
 
 # Start the rest of the stack via Docker
@@ -84,7 +84,7 @@ git clone --recurse-submodules https://github.com/MeetingMind-AI/meetingmind-ai.
 cd meetingmind-ai
 
 docker compose up -d
-docker compose exec ollama ollama pull llama3.1
+docker compose exec ollama ollama pull hermes3:8b
 docker compose exec ollama ollama pull nomic-embed-text
 ```
 
@@ -103,7 +103,7 @@ ollama:
 **Setup Commands:**
 ```bash
 docker compose up -d
-docker compose exec ollama ollama pull llama3.1
+docker compose exec ollama ollama pull hermes3:8b
 docker compose exec ollama ollama pull nomic-embed-text
 ```
 

@@ -167,6 +167,12 @@ Once the setup completes and all containers are running, open the app in your br
 >
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
 
+## ☁️ Cloud Deployment (Optional, On-Demand GPU)
+
+No local GPU? You can run MeetingMind on a **Scaleway L4 GPU instance that is created and fully deleted on demand** — compute is billed only while you are coding, and a small persistent volume keeps your models and data between sessions. Bring it up or tear it down with GitHub Actions buttons (or `make cloud-up` / `make cloud-down`).
+
+See **[`deploy/scaleway/README.md`](deploy/scaleway/README.md)** for the one-time setup (API keys, SSH key, secrets) and daily usage.
+
 ## 🧠 Changing AI Models
 
 By default, MeetingMind runs `hermes3:8b` for summarization and `small.en` for Whisper transcription (optimised for English on CPU — ~18× faster than real-time with no language-detection drift). You can easily switch these out using the included interactive configuration script.

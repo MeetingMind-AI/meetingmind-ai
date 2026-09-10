@@ -10,6 +10,9 @@ Welcome to the central documentation hub.
 - [Setup Profiles (Linux, Mac, Windows, CPU)](architecture/setup-profiles.md)
 - [Troubleshooting Guide](architecture/troubleshooting.md)
 
+## ☁️ Deployment
+- [On-Demand Scaleway GPU (create/destroy, pay-per-use)](../deploy/scaleway/README.md)
+
 ## 🔌 API & Integrations
 - [Vexa Bot Sync & Speaker Detection](api/vexa-integration.md)
 
