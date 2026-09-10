@@ -16,7 +16,7 @@ FastAPI service for meeting orchestration, transcript ingestion, and Agile-focus
 - SQLAlchemy + Alembic
 - PostgreSQL 15
 - Redis
-- Ollama local inference (`llama3` by default)
+- Ollama local inference (`hermes3:8b` by default)
 
 ## Service Endpoints
 
@@ -39,6 +39,10 @@ All authenticated endpoints read the `mm_session` cookie set on login/signup. En
 
 - `GET /api/auth/me`
   - Returns the currently authenticated user: `{id, name, email, photo_url}`. `401` if not logged in.
+
+- `PATCH /api/auth/me`
+  - Body: `{ "name": "...", "photo_b64": null }` (both fields optional).
+  - Updates the current user's display name and/or profile photo. Returns the updated `{id, name, email, photo_url}`.
 
 - `GET /api/auth/photo/{user_id}`
   - Returns the raw profile photo (JPEG). `404` if the user has no photo.
@@ -71,8 +75,14 @@ All team endpoints require a valid session cookie. Members-only actions return `
 - `PATCH /api/teams/{team_id}`
   - Body: `{ "name": "New name" }`. Owner only. Returns `{id, name}`.
 
+- `POST /api/teams/{team_id}/transfer-ownership`
+  - Body: `{ "new_owner_id": 3 }`. Owner only. Reassigns team ownership to an existing active member. Returns `{"ok": true, "team_id": 1, "owner_id": 3}`.
+
+- `DELETE /api/teams/{team_id}`
+  - Owner only. Permanently deletes the team and cascades deletion to all associated meetings, transcripts, action items, topics, and memberships. Returns `{"ok": true}`.
+
 - `POST /api/teams/{team_id}/leave`
-  - Removes the current user from the team. Owners cannot leave (`400`).
+  - Removes the current user from the team. Owners cannot leave without transferring ownership or deleting the team (`400`).
 
 - `GET /api/teams/{team_id}/invite`
   - Owner only. Returns `{ "invite_url": "...", "invite_token": "..." }`.
@@ -117,7 +127,7 @@ All team endpoints require a valid session cookie. Members-only actions return `
 
 - `POST /api/meetings/start`
   - Body: `{ "platform": "<platform>", "native_id": "<meeting-id>", "team_id": 1, "passcode": "" }`
-  - `platform` (required): `google_meet`, `zoom`, or `teams`
+  - `platform` (required): `google_meet` or `teams`
   - `team_id` (optional): associates the meeting with a team
   - `passcode` (optional): required for passcode-protected Teams meetings
   - Deploys a Vexa bot to join the meeting. Upserts the meeting record (re-uses existing row if `vexa_meeting_id` already exists). Schedules background tasks to poll transcripts and monitor the meeting lifecycle until completion. Returns `{"meeting_id": ...}`.
@@ -205,19 +215,21 @@ Topics are team-scoped labels with a color. They can be assigned to meetings as 
 
 > Topic CRUD (create / list / update / delete) is managed under the Teams API: `GET|POST|PATCH|DELETE /api/teams/{team_id}/topics`.
 
-### Proposals (Parking Lot / To Do / To Schedule)
+### Proposals (Parking Lot / To Do / To Schedule / Blocker)
 
-During live ingestion, the LLM detects three types of proposals from each utterance and persists them as pending `AgentAction` rows:
+During live ingestion, the LLM detects four types of proposals from each utterance and persists them as pending `AgentAction` rows:
 
 | `action_type` | Trigger |
-
+|---|---|
 | `parking_lot` | Speaker is blocked, defers, or tables a topic (stuck, park it, later, offline) |
 | `to_do` | A concrete action item assigned to someone |
 | `to_schedule` | A follow-up meeting, discussion, or sync that needs to be scheduled |
+| `blocker` | A critical impediment preventing progress on a task |
 
 - `GET /api/meetings/{meeting_id}/actions` — Lists all proposals for a meeting, grouped by type, then by status. Includes `assignee` information.
-- `POST /api/meetings/{meeting_id}/actions` — Manually create a new action (`parking_lot`, `to_do`, or `to_schedule`) with optional `assignee_id`.
+- `POST /api/meetings/{meeting_id}/actions` — Manually create a new action (`parking_lot`, `to_do`, `to_schedule`, or `blocker`) with optional `assignee_id`.
 - `PATCH /api/meetings/{meeting_id}/actions/{action_id}` — Update an action's `status`, `content`, `assignee_id`, or `action_type`.
+- `DELETE /api/meetings/{meeting_id}/actions/{action_id}` — Delete an action permanently. Returns `{"ok": true}`.
 
   ```json
   {
@@ -295,23 +307,44 @@ During live ingestion, the LLM detects three types of proposals from each uttera
     ]
   }
   ```
+- `PATCH /api/meetings/{meeting_id}/transcript/{chunk_id}` — Edit a transcript chunk's `speaker` or `text`. Saves the original values in audit columns on first edit. Returns the updated chunk.
+- `POST /api/meetings/{meeting_id}/transcript/{chunk_id}/revert` — Revert a manually edited chunk back to the original Whisper text and speaker. Returns `{"ok": true}`.
+- `DELETE /api/meetings/{meeting_id}/transcript/{chunk_id}` — Delete a single transcript chunk. Returns `{"ok": true}`.
+- `POST /api/meetings/{meeting_id}/transcript` — Manually insert a new transcript chunk. Body: `{ "speaker": "Alice", "text": "...", "timestamp": "..." }`. Returns the created chunk.
+
+### Re-summarization
+
+- `POST /api/meetings/{meeting_id}/resummarize` — Triggers a full re-run of the multi-persona report pipeline against the current transcript. Returns `202 Accepted` and runs in the background.
+- `POST /api/meetings/{meeting_id}/stop-summary` — Cancels an in-progress re-summarization for the meeting. Returns `{"ok": true}`.
+- `GET /api/meetings/{meeting_id}/summary-thoughts` — Returns the streamed reasoning steps captured during the most recent summarization run.
+
+### Meeting Re-dispatch
+
+- `POST /api/meetings/{meeting_id}/redispatch` — Redeploys the Vexa bot to an existing meeting (e.g. after the bot was accidentally disconnected). Returns `{"ok": true}`.
+
+### System Diagnostics
+
+- `GET /api/system/status` — Returns health and connectivity status for all backend dependencies (Ollama, Vexa, PostgreSQL, Redis). Useful for verifying the full stack is reachable before starting a meeting.
+
+### Email
+
+- `GET /api/meetings/{meeting_id}/email-preview` — Returns an HTML preview of the meeting summary email that would be sent.
+- `POST /api/meetings/{meeting_id}/send-email` — Sends the meeting summary as a formatted HTML email via Resend to all team members. Requires `RESEND_API_KEY` and `EMAIL_FROM` to be configured.
 
 ### WebSocket
 
-- `WS /api/ws/ingest/{meeting_id}` — Accepts a WebSocket connection for live transcript ingestion. Send JSON `{"speaker": "Alice", "text": "..."}`. The server persists the chunk, runs a single LLM call for both summarization and proposal detection, and responds with:
-  ```json
-  {
-    "ok": true,
-    "meeting_id": 1,
-    "chunk_id": 42,
-    "summary": "Alice assigned to API documentation.",
-    "proposal": {
-      "type": "to_do",
-      "content": "Alice to update the API documentation."
-    }
-  }
-  ```
-  The `proposal` field is omitted when the LLM detects nothing worth flagging.
+- `WS /api/ws/ingest/{meeting_id}` — Server-push streaming channel. Clients connect and receive events; they do not push transcript data. The server streams the following event types:
+
+  | Event type | Description |
+  |---|---|
+  | `transcript_snapshot` | Historical transcript chunks delivered immediately on connect |
+  | `transcript_chunk` | Live utterance as it arrives from Vexa |
+  | `insight` | Scrum Master live observation detected during ingestion |
+  | `proposal` | Action item extracted from speech (to-do, parking lot, etc.) |
+  | `agent_thought` | Live agent reasoning during post-meeting analysis |
+  | `summary_thought` | Post-meeting synthesis step (streamed as the report is built) |
+  | `summary_stopped` | Synthesis was cancelled |
+  | `summary_complete` | Synthesis finished successfully |
 
 Interactive docs:
 
@@ -358,6 +391,7 @@ Stores high-level metadata about meetings orchestrated by Vexa.
 | `team_id` | `Integer` | `NULL` | FK → `teams.id` (SET NULL on delete). Associates the meeting with a team. |
 | `created_by` | `Integer` | `NULL` | FK → `users.id` (SET NULL on delete). The user who dispatched the bot. |
 | `created_at` | `DateTime` | `now()` | Local timestamp of when the meeting record was created. |
+| `meeting_type` | `String(64)` | `'general'` | Meeting mode: `general`, `daily_standup`, or `sprint_planning`. |
 
 #### 2. `users` Table
 
@@ -397,6 +431,8 @@ Stores high-level metadata about meetings orchestrated by Vexa.
 | `user_id` | `Integer` | Indexed | FK → `users.id` (CASCADE delete). |
 | `team_id` | `Integer` | Indexed | FK → `teams.id` (CASCADE delete). |
 | `joined_at` | `DateTime` | `now()` | |
+| `role` | `String(32)` | `'team_member'` | Agile role: `scrum_master`, `product_manager`, or `team_member`. |
+| `notification_preferences` | `JSONB` | `[]` | Array of notification filter tokens (e.g. `type:blocker`, `business:off`). |
 
 Unique constraint on `(user_id, team_id)`.
 
@@ -410,6 +446,11 @@ Stores raw transcription snippets returned by Vexa WebSocket events and synced l
 | `speaker` | `String(120)` | | Name of the person speaking. |
 | `text` | `Text` | | The transcribed speech. |
 | `timestamp` | `DateTime` | | The absolute start time of the speech chunk. |
+| `is_edited` | `Boolean` | `False` | Whether this chunk has been manually edited. |
+| `original_text` | `Text` | `NULL` | Raw Whisper text preserved on first edit. |
+| `original_speaker` | `String` | `NULL` | Raw Whisper speaker preserved on first edit. |
+| `edited_at` | `DateTime` | `NULL` | UTC timestamp of the most recent edit. |
+| `edited_by` | `Integer` | `NULL` | FK → `users.id` — who performed the edit. |
 
 #### 7. `agent_actions` Table
 Stores AI-detected proposals (to-dos, parking lot items, items to schedule) extracted during live transcript ingestion.
@@ -559,11 +600,13 @@ On meeting `completed`:
 1. **Docker & Docker Compose:** Required to run the API (and databases if defined in your compose file).
 2. **Ollama:** The backend relies on Ollama for both real-time insights and final reports. 
    - Install Ollama on your host machine.
-   - Make sure you pull the required model before running the backend:
+   - Make sure you pull the required models before running the backend:
      ```bash
-     ollama pull llama3
+     ollama pull hermes3:8b
+     ollama pull nomic-embed-text
      ```
-   - Ollama must be reachable from the Docker container at `http://host.docker.internal:11434`. (You may need to set `OLLAMA_HOST=0.0.0.0` depending on your OS).
+   - **Apple Silicon Mac:** Ollama runs on the host and is reachable from Docker containers at `http://host.docker.internal:11434`. `setup.sh` configures this automatically.
+   - **Linux:** Ollama runs inside the Docker network as the `ollama` container and is reachable at `http://ollama:11434`.
 
 ### Running the API
 
@@ -578,7 +621,7 @@ Run the following from the root directory of your project using Docker Compose:
    docker compose logs -f backend
    ```
 
-> Note: Ollama now runs as a Docker service (`meetingmind_ollama`) via the root `docker-compose.yml`.
+> Note: On Linux, Ollama runs as a Docker service (`meetingmind_ollama`) via the root `docker-compose.yml`. On Apple Silicon Mac, `setup.sh` stops the Docker Ollama container and routes inference through the host Ollama instance instead, conserving unified memory.
 > On Linux VMs with NVIDIA GPUs, uncomment the `deploy.resources` section in `docker-compose.yml` to enable GPU acceleration.
 
 ## Migrations

@@ -39,7 +39,7 @@ curl http://localhost:11434/api/tags
 *(You should get a JSON response listing `hermes3:8b` and `nomic-embed-text`)*
 
 #### 4. Update `.env` configuration
-In your project root `.env` file (`<project-root>/meetingmind-ai/.env`):
+In your project root `.env` file:
 ```env
 OLLAMA_URL=http://host.docker.internal:11434/api/generate
 MEM0_OLLAMA_URL=http://host.docker.internal:11434
@@ -77,10 +77,10 @@ docker compose restart backend
 ---
 
 ## Whisper Model Selection for CPU
-- `small` (current default): Best accuracy/speed on 4+ CPU cores
-- `base.en`: Use if constrained or for English-only meetings
-- `medium`/`large`: Only with GPU (too slow for real-time on CPU)
-- `BEAM_SIZE=1` + `BEST_OF=1`: ~5x faster with ~1% WER increase
+- `small.en` (default): Best accuracy/speed on English meetings with 4+ CPU cores (~18x real-time)
+- `base.en`: Use if constrained — faster but lower accuracy; English-only meetings only
+- `medium`/`large-v3-turbo`: Only on GPU; too slow for real-time transcription on CPU
+- `BEAM_SIZE=1` + `BEST_OF=1`: Approximately 5x faster with minimal WER increase (~1%)
 
 ---
 

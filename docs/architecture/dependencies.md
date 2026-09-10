@@ -10,7 +10,7 @@ MeetingMind integrates **Mem0** (using `mem0ai`) to provide cross-meeting semant
 - **Context Injection (Search):** Before running the final report analysis, the backend searches Mem0 using the first 1000 characters of the new meeting transcript (falling back to "General agile meeting" if too short). The retrieved memories are injected into the final LLM prompt context, allowing the report to reference past decisions and blockers.
 - **Memory Storage (Save):** After the report is generated, the backend persists the newly discovered action items, decisions, and blockers from the Tech Lead, Product Manager, and Scrum Master back into Mem0. These are scoped under the user ID `"team_{team_id}"` (or `"global_team"` if no team ID is provided).
 - **Backend Only:** The frontend does not call Mem0 directly; memory influences the backend summaries exclusively.
-- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, etc.). By default, it is configured to use the local Ollama instance for both text generation (`hermes3:8b`) and embeddings (`nomic-embed-text`), avoiding the need for OpenAI keys.
+- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, `MEM0_LLM_MODEL`, `MEM0_EMBED_MODEL`, etc.). By default, it uses `hermes3:8b` for text generation and `nomic-embed-text` for embeddings, running entirely through the local Ollama instance.
 
 ### Testing Mem0
 

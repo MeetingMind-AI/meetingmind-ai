@@ -2,11 +2,11 @@
 
 This guide covers common issues and resolutions for deploying and running the MeetingMind AI stack, particularly in Linux VM environments and Docker setups.
 
-## 🤖 Vexa Submodule
+## Vexa Submodule
 
 Vexa is a highly integrated piece of architecture that interacts directly with our host VM. Because of this, standard Docker commands can sometimes cause unexpected issues.
 
-### ⚠️ Scenario A: The System Crashed After a VM Reboot
+### Scenario A: The System Crashed After a VM Reboot
 
 If the server is rebooted, the `runtime-api` container will almost always enter a crash loop (`Restarting`). You will see a `500 Failed to start bot container` error in the website UI.
 
@@ -19,7 +19,7 @@ sudo chmod 666 /var/run/docker.sock
 docker compose -f vexa/deploy/compose/docker-compose.yml restart runtime-api
 ```
 
-### 🔄 Scenario B: Safely Updating to a New Release
+### Scenario B: Safely Updating to a New Release
 
 Never update Vexa using standard `docker compose pull` commands (including `IMAGE_TAG=... docker compose pull`). Upstream changes frequently introduce new required `.env` variables and database schema changes. Attempting to pull latest without updating the environment will break the stack.
 
@@ -56,7 +56,7 @@ make all
 
 ---
 
-## 🌐 Networking & Docker Environments
+## Networking & Docker Environments
 
 If you are deploying this on a Linux server rather than Docker Desktop for Mac/Windows, be aware of standard Linux networking restrictions.
 
@@ -110,7 +110,7 @@ After doing that, run the submodule update again:
 git submodule update --init --recursive
 ```
 
-## 🗄️ Database Migrations
+## Database Migrations
 
 ### "Can't locate revision identified by 'xxxx'"
 

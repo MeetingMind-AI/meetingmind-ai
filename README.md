@@ -12,15 +12,34 @@
 
 ---
 
-MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot into your meetings (Google Meet, Teams, Zoom, Jitsi) to transcribe, summarize, and generate structured Agile reports—all while keeping your data offline and secure.
+MeetingMind AI is an advanced, fully self-hosted system that brings an AI bot into your meetings (Google Meet, Microsoft Teams) to transcribe, summarize, and generate structured Agile reports—all while keeping your data offline and secure.
 
-## 📚 Documentation
+## Key Feature Highlights
+
+- **Agile Meeting Modes (Sprint Planning vs General)**: Tailored extraction pipelines and agendas customized for **Sprint Planning**, **Daily Standup**, and **General Syncs**, tuning persona extraction prompts to your meeting type.
+- **Live Thinking Stream**: Real-time visibility into the multi-agent cognitive process as the Tech Lead, Product Manager, and Scrum Master deliberate, challenge trade-offs, and synthesize reports.
+- **Document Picture-in-Picture (PiP)**: Native Chrome floating mini-window overlaying your call with live transcript streaming, Instant Clarity Q&A, and one-click action item triage.
+- **Transcript Auditing & Rollback**: Review and edit speech-to-text utterances, manually insert missed points, and perform one-click rollbacks via full audit history (`original_text`, `original_speaker`, `edited_at`) before re-summarizing.
+- **HTML Email Reports via Resend HTTP API**: Instant delivery of formatted meeting digests and action items directly via HTTPS, avoiding cloud provider SMTP port blocking.
+- **Real-Time System Diagnostics**: Interactive diagnostic probe (`GET /api/system/status`) inspecting Ollama hardware acceleration, active VRAM/RAM model footprint, latency, PostgreSQL, Redis, Qdrant, and Whisper services.
+
+## Default Local AI Models
+
+| Task | Default Model | Runtime / Engine | Notes |
+|---|---|---|---|
+| **LLM Inference (Extraction, Debate, Synthesis)** | `hermes3:8b` | Ollama (Local) | Fast multi-persona reasoning, instruction following, and structured JSON output |
+| **Vector Embeddings** | `nomic-embed-text` | Ollama (Local) | 768-dim embeddings powering Mem0 long-term memory in Qdrant |
+| **Speech-to-Text (STT)** | `small.en` | Local Whisper | CPU-optimized (~18x real-time, drift-free); GPU setups can select `large-v3-turbo` |
+
+Alternative models (such as `qwen2.5:14b` for high-VRAM GPU setups) can be configured dynamically at any time using `./change_models.sh`.
+
+## Documentation
 
 For a deep dive into the architecture, APIs, and features, see the **[Documentation Hub](docs/README.md)**.
 
 
 
-## 🏗 Repository Structure
+## Repository Structure
 
 This repository is a monorepo that orchestrates the following submodules/zones:
 
@@ -31,7 +50,7 @@ This repository is a monorepo that orchestrates the following submodules/zones:
 | **[`vexa/`](vexa/README.md)** | **Sensor Zone:** Open-source Vexa meeting bot stack that joins calls and streams speaker-attributed transcripts. |
 | **[`docs/`](docs/README.md)** | Central documentation hub containing detailed architecture and API references. |
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -59,7 +78,7 @@ flowchart TD
     B -->|Inference| O
     B -->|Semantic Search| M
     V -->|Spawns| VB
-    VB -->|Joins Meet/Teams/Zoom| External(Meetings)
+    VB -->|Joins Meet/Teams| External(Meetings)
 ```
 
 - **Sensor Zone (`vexa/`)**
@@ -77,7 +96,7 @@ flowchart TD
 - **UI Zone (`frontend/`)**
   - Vite React App on `http://localhost:3000` or `https://<server-ip>`
 
-## ⚙️ Prerequisites & System Requirements
+## Prerequisites & System Requirements
 
 ### Minimum Hardware Specs
 - **RAM:** Minimum 10GB of RAM allocated to Docker.
@@ -105,7 +124,7 @@ flowchart TD
   sudo nvidia-smi -pm 1
   ```
 
-## 🚀 Quickstart & Deployment
+## Quickstart & Deployment
 
 We provide an automated setup script that handles dependencies, the Vexa bot, database migrations, and LLM pulls.
 
@@ -167,23 +186,23 @@ Once the setup completes and all containers are running, open the app in your br
 >
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
 
-## ☁️ Cloud Deployment (Optional, On-Demand GPU)
+## Cloud Deployment (Optional, On-Demand GPU)
 
 No local GPU? You can run MeetingMind on a **Scaleway L4 GPU instance that is created and fully deleted on demand** — compute is billed only while you are coding, and a small persistent volume keeps your models and data between sessions. Bring it up or tear it down with GitHub Actions buttons (or `make cloud-up` / `make cloud-down`).
 
 See **[`deploy/scaleway/README.md`](deploy/scaleway/README.md)** for the one-time setup (API keys, SSH key, secrets) and daily usage.
 
-## 🧠 Changing AI Models
-
-By default, MeetingMind runs `hermes3:8b` for summarization and `small.en` for Whisper transcription (optimised for English on CPU — ~18× faster than real-time with no language-detection drift). You can easily switch these out using the included interactive configuration script.
-
+## Changing AI Models
+ 
+By default, MeetingMind runs `hermes3:8b` for summarization, debate, and final synthesis, `nomic-embed-text` for vector embeddings, and `small.en` for Whisper transcription (optimized for English on CPU with ~18x real-time performance and zero language-detection drift; GPU setups can select `large-v3-turbo`). You can easily switch models using the included interactive configuration script:
+ 
 ```bash
 ./change_models.sh
 ```
+ 
+This script prompts for new LLM and Whisper model names, updates the appropriate `.env` files, and safely restarts the affected Docker containers to apply changes immediately.
 
-This script will prompt you for the new model names, update the necessary `.env` files behind the scenes, and safely restart the affected Docker containers to apply the changes immediately.
-
-## 🔄 Updating Vexa
+## Updating Vexa
 
 The Vexa core logic and bot are frequently updated. To grab the latest changes without fully reinstalling:
 
