@@ -192,11 +192,13 @@ ch.onmessage = (e) => {
 
 ---
 
-## window.open() Fallback
+## window.open() Fallback & Browser Guidance
 
-When `documentPictureInPicture` is not in `window` (non-HTTPS context), `openPip()` falls back to `window.open()` targeting the `/popup` route. Proposals at the time of opening are stored in `localStorage` under `mini-popup-{meetingId}` and read by `MiniPopup.jsx` on mount.
-
-This fallback does **not** produce an always-on-top window.
+When `documentPictureInPicture` is not in `window` (such as in Safari, Firefox, or non-HTTPS contexts):
+1. `getBrowserPipSupport()` detects the specific browser (e.g. Safari, Firefox).
+2. A clear browser error message is shown to the user on the Live screen: `"Document Picture-in-Picture is not supported in Safari. Please change your browser to Google Chrome or Microsoft Edge to get the floating PiP document."`
+3. `openPip()` falls back to `window.open()` targeting the `/popup` route so users still have access to the companion controls.
+4. An informative browser warning banner is rendered at the top of the fallback popup window (`MiniPopup.jsx`) reminding the user that an always-on-top floating overlay requires Google Chrome or Microsoft Edge.
 
 ---
 
