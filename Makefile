@@ -43,7 +43,23 @@ stt-down:
 
 app-up:
 	@printf "$(COLOR_TITLE)[app] Starting core platform...$(COLOR_RESET)\n"
-	docker compose up -d --remove-orphans
+	@if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then \
+		printf "$(COLOR_OK)[ollama] Detected native Ollama on host (port 11434) — configuring Metal GPU acceleration via host.docker.internal$(COLOR_RESET)\n"; \
+		if [ -f .env ]; then \
+			sed -i '' 's|^OLLAMA_URL=.*|OLLAMA_URL=http://host.docker.internal:11434/api/generate|' .env 2>/dev/null || sed -i 's|^OLLAMA_URL=.*|OLLAMA_URL=http://host.docker.internal:11434/api/generate|' .env; \
+			sed -i '' 's|^MEM0_OLLAMA_URL=.*|MEM0_OLLAMA_URL=http://host.docker.internal:11434|' .env 2>/dev/null || sed -i 's|^MEM0_OLLAMA_URL=.*|MEM0_OLLAMA_URL=http://host.docker.internal:11434|' .env; \
+		fi; \
+		docker compose up -d --remove-orphans; \
+		docker compose stop ollama >/dev/null 2>&1 || true; \
+		printf "$(COLOR_OK)[ollama] Native host Ollama connected. Docker Ollama container stopped to save resources.$(COLOR_RESET)\n"; \
+	else \
+		printf "$(COLOR_TITLE)[ollama] Native Ollama not detected on host — falling back to Docker Ollama (CPU mode)$(COLOR_RESET)\n"; \
+		if [ -f .env ]; then \
+			sed -i '' 's|^OLLAMA_URL=.*|OLLAMA_URL=http://ollama:11434/api/generate|' .env 2>/dev/null || sed -i 's|^OLLAMA_URL=.*|OLLAMA_URL=http://ollama:11434/api/generate|' .env; \
+			sed -i '' 's|^MEM0_OLLAMA_URL=.*|MEM0_OLLAMA_URL=http://ollama:11434|' .env 2>/dev/null || sed -i 's|^MEM0_OLLAMA_URL=.*|MEM0_OLLAMA_URL=http://ollama:11434|' .env; \
+		fi; \
+		docker compose up -d --remove-orphans; \
+	fi
 	@printf "$(COLOR_OK)[app] Core platform up.$(COLOR_RESET)\n"
 
 app-restart:
@@ -59,6 +75,9 @@ setup:
 rebuild:
 	@printf "$(COLOR_TITLE)[meetingmind] Rebuilding MeetingMind core images...$(COLOR_RESET)\n"
 	docker compose up -d --build --remove-orphans
+	@if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then \
+		docker compose stop ollama >/dev/null 2>&1 || true; \
+	fi
 	@printf "$(COLOR_TITLE)[vexa] Restarting/Rebuilding Vexa...$(COLOR_RESET)\n"
 	docker compose -p vexa-v012 -f vexa/deploy/compose/docker-compose.yml -f vexa.override.yml --env-file vexa/.env up -d --build --remove-orphans
 	@printf "$(COLOR_OK)[meetingmind] Rebuild complete.$(COLOR_RESET)\n"
