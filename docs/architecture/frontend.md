@@ -22,7 +22,7 @@ MeetingMind dispatches an AI bot into Google Meet or Microsoft Teams sessions. T
 | `/teams/:teamId/parking-lot` | `GlobalParkingLot.jsx` | Protected | Cross-meeting parking lot for deferred discussion topics with one-click "Promote to Task" migration. |
 | `/teams/:teamId/schedule` | `GlobalSchedule.jsx` | Protected | Follow-up tracking view for deferred items pending a calendar date, equipped with inline date pickers. |
 | `/teams/:teamId/archive` | `GlobalArchive.jsx` | Protected | Global archive for completed, rejected, or soft-deleted action items with topic filtering and restoration. |
-| `/teams/:teamId/settings` | `Settings.jsx` | Protected | Team settings: General (rename), Members (roles & notification preferences), Topics (custom taxonomy), AI Prompts (system prompt overrides), Invite Link, Leave Team. |
+| `/teams/:teamId/settings` | `Settings.jsx` | Protected | Team settings: General (rename), Members (roles, notification preferences, transfer ownership), Topics (custom taxonomy), AI Prompts (system prompt overrides), Invite Link, Danger Zone (transfer ownership, delete team, leave team). |
 | `/teams/:teamId/live/:meetingId` | `Live.jsx` | Protected | Live meeting companion — real-time Whisper transcript, multi-agent thought streams, interactive proposal alerts, Instant Clarity explainer modals, and Document Picture-in-Picture. |
 | `/teams/:teamId/review/:meetingId?` | `Review.jsx` | Protected | Post-meeting review workspace — tabbed AI synthesis (General, Technical, Business), live thinking progress indicators, inline transcript editing with original text preservation and reversion, action item moderation, and sandboxed HTML email previews. |
 | `/popup` | `MiniPopup.jsx` | Protected | Standalone browser popup fallback for the companion mini-window when Document PiP is unavailable. |
@@ -33,9 +33,11 @@ All routes except `/login` and `/join/:inviteToken` require authentication via s
 
 ## User-Facing Features
 
-**Auth**
+**Auth & Onboarding**
 - Email/password sign-up and login; session via `mm_session` cookie.
-- Profile photo upload on sign-up and profile settings.
+- Interactive 4-step Quickstart Tutorial (`QuickstartModal.jsx`) introducing multi-agent BOLAA personas, bot dispatching, in-call PiP/Instant Clarity, and Kanban sync.
+- Dedicated Profile Modal (`ProfileModal.jsx`) for updating display name and uploading avatar photos.
+- Replay tutorial anytime via "Quickstart Guide" in sidebar navigation or `/teams` header.
 - Unauthenticated users are redirected to `/login`.
 
 **Teams**
@@ -64,11 +66,11 @@ All routes except `/login` and `/join/:inviteToken` require authentication via s
 
 **Settings** (`/teams/:teamId/settings`)
 - General: rename the team.
-- Members: agile role assignment (`scrum_master`, `product_manager`, `team_member`) and per-role notification preferences.
+- Members: agile role assignment (`scrum_master`, `product_manager`, `team_member`), per-role notification preferences, and 1-click **Make Owner** ownership transfer.
 - Topics: create, rename, recolor, and delete team topic tags.
 - AI Prompts: per-key system prompt overrides for the multi-agent pipeline.
 - Invite Link: generate a shareable join link (owner only).
-- Leave Team.
+- Danger Zone: transfer team ownership to another active member, permanently delete the team with type-to-confirm safety verification (owners), or leave team (members).
 
 **Kanban / Parking Lot / Schedule / Archive**
 - Action items aggregated across all team meetings into Kanban columns (To Do, In Progress, Done).
@@ -258,6 +260,8 @@ Completed meetings feature a compiled email report view:
 | `POST` | `/api/teams` | Teams picker — create team |
 | `GET` | `/api/teams/:teamId` | Team settings & layout |
 | `PATCH` | `/api/teams/:teamId` | Team settings — rename team |
+| `POST` | `/api/teams/:teamId/transfer-ownership` | Team settings — transfer ownership |
+| `DELETE` | `/api/teams/:teamId` | Team settings — delete team workspace |
 | `POST` | `/api/teams/:teamId/leave` | Team settings — leave team |
 | `GET` | `/api/teams/:teamId/invite` | Team settings — invite link |
 | `POST` | `/api/teams/join/:token` | JoinTeam page |

@@ -75,8 +75,14 @@ All team endpoints require a valid session cookie. Members-only actions return `
 - `PATCH /api/teams/{team_id}`
   - Body: `{ "name": "New name" }`. Owner only. Returns `{id, name}`.
 
+- `POST /api/teams/{team_id}/transfer-ownership`
+  - Body: `{ "new_owner_id": 3 }`. Owner only. Reassigns team ownership to an existing active member. Returns `{"ok": true, "team_id": 1, "owner_id": 3}`.
+
+- `DELETE /api/teams/{team_id}`
+  - Owner only. Permanently deletes the team and cascades deletion to all associated meetings, transcripts, action items, topics, and memberships. Returns `{"ok": true}`.
+
 - `POST /api/teams/{team_id}/leave`
-  - Removes the current user from the team. Owners cannot leave (`400`).
+  - Removes the current user from the team. Owners cannot leave without transferring ownership or deleting the team (`400`).
 
 - `GET /api/teams/{team_id}/invite`
   - Owner only. Returns `{ "invite_url": "...", "invite_token": "..." }`.

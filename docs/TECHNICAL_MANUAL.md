@@ -243,7 +243,9 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 - `POST /api/teams`: Create a new team workspace.
 - `GET /api/teams/{team_id}`: Retrieve team details, membership count, and active member roster.
 - `PATCH /api/teams/{team_id}`: Rename team workspace (owner only).
-- `POST /api/teams/{team_id}/leave`: Leave a team workspace.
+- `POST /api/teams/{team_id}/transfer-ownership`: Transfer ownership of a team workspace to another existing team member (owner only).
+- `DELETE /api/teams/{team_id}`: Permanently delete a team workspace and all associated meetings, transcripts, action items, topics, and memberships (owner only).
+- `POST /api/teams/{team_id}/leave`: Leave a team workspace (owners cannot leave without transferring ownership or deleting team).
 - `GET /api/teams/{team_id}/invite`: Retrieve or refresh team invite token.
 - `POST /api/teams/join/{invite_token}`: Join a team workspace via invite token.
 - `GET /api/teams/{team_id}/members`: List team members, agile roles (`scrum_master`, `product_manager`, `team_member`), and notification preferences.
