@@ -102,7 +102,7 @@ MeetingMind integrates the W3C **Document Picture-in-Picture API** (`documentPic
 │  5. Bind BroadcastChannel('meeting-${id}')             │
 └───────────────┬────────────────────────▲───────────────┘
                 │                        │
-       postMessage (timer/proposals)    postMessage (accept/reject/park)
+       BroadcastChannel (sync)   BroadcastChannel (actions)
                 │                        │
 ┌───────────────▼────────────────────────┴───────────────┐
 │ Always-on-Top PiP Window (MiniPipContent)              │
@@ -133,12 +133,12 @@ Real-time audio transcription and live AI reasoning are driven by a persistent W
 
 | Event Name | Direction | Payload Structure | Frontend Handling |
 |---|---|---|---|
-| `transcript_snapshot` | Server -> Client | `{ chunks: Array<Chunk> }` | Hydrates historical speaker utterances upon initial socket connection or reconnection. |
-| `transcript_chunk` | Server -> Client | `{ id, speaker, text, timestamp, is_final }` | Appends or updates the transcript feed. Implements **interim speech expansion**: matches recent chunks by ID, speaker + timestamp, or text prefix to stitch live progressive speech without jitter. |
-| `insight` | Server -> Client | `{ role, text }` | Displays live Scrum Master contextual observations. Filtered according to user notification preferences. |
-| `proposal` | Server -> Client | `{ id, type, content, assignee, tags }` | Enqueues pending action proposals (`to_do`, `parking_lot`, `to_schedule`, `blocker`). Triggers interactive toast alerts and audible chimes. |
-| `agent_thought` | Server -> Client | `{ agent, title, text, speaker, action }` | Streams live multi-agent deliberation traces into `LiveThinkingPanel`. |
-| `summary_thought` | Server -> Client | `{ agent, title, text }` | Streams post-meeting synthesis steps into `ThinkingProcess`. |
+| `transcript_snapshot` | Server -> Client | `{"event": "transcript_snapshot", "data": {"chunks": [...]}}` | Hydrates historical speaker utterances upon initial socket connection or reconnection. |
+| `transcript_chunk` | Server -> Client | `{"event": "transcript_chunk", "data": {"id", "speaker", "text", "timestamp"}}` | Appends or updates the transcript feed. Implements **interim speech expansion**: matches recent chunks by ID, speaker + timestamp, or text prefix to stitch live progressive speech without jitter (`is_final` is defaulted client-side). |
+| `insight` | Server -> Client | `{"event": "insight", "data": {"role", "text"}}` | Displays live Scrum Master contextual observations. Filtered according to user notification preferences. |
+| `proposal` | Server -> Client | `{"event": "proposal", "data": {"id", "type", "content", "status"}}` | Enqueues pending action proposals (`to_do`, `parking_lot`, `to_schedule`, `blocker`). Triggers interactive toast alerts and audible chimes. |
+| `agent_thought` | Server -> Client | `{"event": "agent_thought", "data": {"agent", "title", "text", "speaker", ...}}` | Streams live multi-agent deliberation traces into `LiveThinkingPanel`. |
+| `summary_thought` | Server -> Client | `{"type": "summary_thought", "thought": {"agent", "title", "text"}}` | Streams post-meeting synthesis steps into `ThinkingProcess`. |
 
 #### Web Audio Synthesizer
 Proposal alerts generate a gentle chime using the **Web Audio API** (`AudioContext`, `OscillatorNode`, `GainNode`):
@@ -243,7 +243,7 @@ Completed meetings feature a compiled email report view:
 | `SystemStatusTracker` | `src/components/SystemStatusTracker.jsx` | Hardware diagnostics badge and modal showing Ollama acceleration, VRAM/RAM allocation, and service ping latencies. |
 | `MeetingTopicTags` | `src/components/MeetingTopicTags.jsx` | Topic badge cluster with hover remove actions and `+ Tag` dropdown supporting drop-up/drop-down placement. |
 | `TeamSetupModal` | `src/components/TeamSetupModal.jsx` | Modal dialog for creating and configuring new team workspaces. |
-| `UserSetupModal` | `src/components/UserSetupModal.jsx` | Modal dialog for updating user profile information and profile photos. |
+| `UserSetupModal` | `src/components/UserSetupModal.jsx` | Backward-compatibility alias pointing to `QuickstartModal`. Profile editing is handled in `ProfileModal.jsx`. |
 
 ---
 
@@ -277,7 +277,8 @@ Completed meetings feature a compiled email report view:
 | `DELETE` | `/api/teams/:teamId/prompts/:promptKey` | Settings — AI prompts tab |
 | `POST` | `/api/meetings/start` | Dashboard bot dispatch |
 | `POST` | `/api/meetings/:id/leave` | Live — End Meeting |
-| `GET` | `/api/meetings` | Dashboard, Kanban, Parking Lot, Schedule |
+| `GET` | `/api/meetings` | Dashboard & Review list |
+| `GET` | `/api/actions` | Global Kanban, Parking Lot, Schedule, Archive (`getAllActions`) |
 | `GET` | `/api/meetings/:id` | Review page & status polling |
 | `PATCH` | `/api/meetings/:id` | Rename meeting |
 | `DELETE` | `/api/meetings/:id` | Delete meeting from Dashboard |

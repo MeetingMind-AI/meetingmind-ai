@@ -43,32 +43,32 @@ MeetingMind AI is architected around a strict **Dual-Zone Decoupled Topology**, 
 +-----------------------------------------------------------------------------------+
        |                  |                    |                   |
        v                  v                    v                   v
- PostgreSQL 15         Redis 7               Qdrant              Ollama
- (Relational DB)     (Cache/State)        (Vector Store)    (Local LLM Engine)
-       ^                                                           ^
-       |                                                           |
-       +---------------------------- REST -------------------------+
-                                     |
-                                     v
+  PostgreSQL 15         Redis 7               Qdrant              Ollama
+  (Relational DB)    (60s TTL Cache)       (Vector Store)    (Local LLM Engine)
+        ^                                                           ^
+        |                                                           |
+        +---------------------------- REST -------------------------+
+                                      |
+                                      v
 +-----------------------------------------------------------------------------------+
 |                                 SENSOR ZONE                                       |
 |  Vexa Headless Bot Engine (`vexa/` submodule)                                     |
 |  -------------------------------------------------------------------------------  |
 |  • Headless Chromium Puppeteer Bot (Google Meet / MS Teams Ingestion)            |
 |  • Local Whisper Audio Speech-to-Text & Speaker Attribution                      |
-|  • Webhooks (Port 8056/8057) & Internal Gateway Interfaces                        |
+|  • Internal Gateway Interfaces (Port 18056/18057) & Backend Ingress Webhooks      |
 +-----------------------------------------------------------------------------------+
 ```
 
 #### 1. Sensor Zone (`vexa/` Submodule)
 - **Headless Ingestion Bots**: Spawns containerized Node.js/Puppeteer Chromium instances to join Google Meet or Microsoft Teams calls as headless participants.
-- **Local Audio Processing**: Captures WebRTC audio streams directly from the virtual browser context, passing raw PCM streams to local Whisper ASR models.
-- **Gateway Server**: Exposes REST interfaces on port `8056` for bot lifecycle management (`POST /bots`, `DELETE /bots/{platform}/{id}`) and admin monitoring on port `8057`.
+- **Local Audio Processing**: Captures WebRTC audio streams directly from the virtual browser context, passing raw PCM streams to a dedicated local Whisper ASR container (`transcription-api:80`).
+- **Gateway Server**: Exposes REST interfaces on host port `18056` (Docker internal `gateway:8000`) for bot lifecycle management (`POST /bots`, `DELETE /bots/{platform}/{id}`) and admin monitoring on host port `18057` (Docker internal `admin-api:8001`). Vexa emits status webhooks back to the Brain Zone at `POST /api/vexa/webhook` (port 8000).
 
 #### 2. Brain Zone (`backend/`)
-- **FastAPI Core Gateway (Port 8000)**: Serves as the central API gateway managing authentication, team isolation, meeting lifecycles, and WebSocket streaming.
-- **Relational Storage (PostgreSQL 15)**: Persists user credentials, team memberships, meeting metadata, structured transcript chunks, and action item records.
-- **Transient State & Caching (Redis 7)**: Provides sub-millisecond session state management, real-time query caching for Instant Clarity, and pub/sub message routing.
+- **FastAPI Core Gateway (Port 8000)**: Serves as the central API gateway managing authentication, team isolation, meeting lifecycles, and in-memory WebSocket streaming (`ConnectionManager`).
+- **Relational Storage (PostgreSQL 15)**: Persists user credentials, session tokens (`sessions` table), team memberships, meeting metadata, structured transcript chunks, and action item records.
+- **Transient Caching (Redis 7)**: Provides sub-second 60-second TTL caching for Instant Clarity Q&A (`/api/meetings/{id}/explain`) with fail-open fallback, and socket liveness checks in `/api/system/status`.
 - **Vector Memory (Qdrant + Mem0)**: Stores semantic embeddings of past meeting decisions, technical debt items, and team commitments for cross-meeting memory retrieval.
 - **Local LLM Engine (Ollama on Port 11434)**: Executes open-weight LLMs (`hermes3:8b`, `nomic-embed-text`) with hardware-accelerated local inference.
 
@@ -202,7 +202,7 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 
 10. **Hardware Acceleration & Host Routing Topology**:
     - **Apple Silicon macOS**: Leverages native Apple Metal acceleration by executing Ollama on the host machine and routing container traffic through `http://host.docker.internal:11434`. The Docker Ollama container is safely stopped to prevent memory duplication, allowing models like `hermes3:8b` to execute at peak unified-memory bandwidth.
-    - **Linux NVIDIA GPU**: Leverages the NVIDIA Container Toolkit with `nvidia-smi -pm 1` (persistence mode enabled), dedicating 16GB+ VRAM, allocating `shm_size: 2gb` to eliminate tensor IPC bus errors, configuring `OLLAMA_NUM_PARALLEL: "2"` for concurrent persona inference, and setting `oom_score_adj: -500` to safeguard the PostgreSQL database from kernel memory termination.
+    - **Linux NVIDIA GPU**: Leverages the NVIDIA Container Toolkit with `nvidia-smi -pm 1` (persistence mode enabled), dedicating 16GB+ VRAM, allocating `shm_size: 2gb` to eliminate tensor IPC bus errors, configuring `OLLAMA_NUM_PARALLEL: "2"` in compose (serialized via backend single-flight semaphore), and setting `oom_score_adj: -500` on the `postgres` container to safeguard the PostgreSQL database from kernel memory termination.
 
 ---
 
@@ -214,8 +214,8 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 |---|---|---|---|
 | **Backend Framework** | Python / FastAPI | 3.11+, FastAPI 0.110+ | Asynchronous REST gateway & WebSocket server |
 | **ORM & Migrations** | SQLAlchemy / Alembic | SQLAlchemy 2.0+, Alembic 1.13+ | Relational database ORM & schema versioning |
-| **Relational Database** | PostgreSQL | 15.0+ (JSONB enabled) | Primary persistent data store |
-| **Transient Caching** | Redis | 7.0+ | Sub-second caching for Instant Clarity & sessions |
+| **Relational Database** | PostgreSQL | 15.0+ (JSONB enabled) | Primary persistent data store & user session store |
+| **Transient Caching** | Redis | 7.0+ | Sub-second 60s TTL caching for Instant Clarity Q&A |
 | **Vector Engine** | Qdrant / Mem0 | Qdrant 1.8+, Mem0 0.1+ | Semantic long-term vector memory store |
 | **Local LLM Engine** | Ollama | 0.1.30+ | Local model execution (`hermes3:8b`) |
 | **Local Embeddings** | Nomic Embed Text | `nomic-embed-text` | Local vector embedding model via Ollama |
@@ -224,7 +224,7 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 | **Email Distribution** | Resend HTTP API | HTTPS REST (`api.resend.com`) | Cloud-friendly HTML report distribution bypassing SMTP blocks |
 | **Browser Features** | Chrome Dev APIs | Document Picture-in-Picture | Floating mini-window overlay during live meetings |
 | **Sensor Submodule** | Node.js / Puppeteer | Vexa Framework (Node 20+) | Headless browser bot & WebRTC audio capture |
-| **Local ASR** | OpenAI Whisper | Local Whisper Weights (`small.en`) | On-premise speech-to-text transcription |
+| **Local ASR** | OpenAI Whisper | Local Whisper Weights (`small.en`) | Dedicated FastAPI Whisper container (`transcription-api:80`) |
 
 ---
 
@@ -246,33 +246,33 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 - `POST /api/teams/{team_id}/transfer-ownership`: Transfer ownership of a team workspace to another existing team member (owner only).
 - `DELETE /api/teams/{team_id}`: Permanently delete a team workspace and all associated meetings, transcripts, action items, topics, and memberships (owner only).
 - `POST /api/teams/{team_id}/leave`: Leave a team workspace (owners cannot leave without transferring ownership or deleting team).
-- `GET /api/teams/{team_id}/invite`: Retrieve or refresh team invite token.
+- `GET /api/teams/{team_id}/invite`: Retrieve existing team invite token (generated on team creation).
 - `POST /api/teams/join/{invite_token}`: Join a team workspace via invite token.
 - `GET /api/teams/{team_id}/members`: List team members, agile roles (`scrum_master`, `product_manager`, `team_member`), and notification preferences.
 - `DELETE /api/teams/{team_id}/members/{user_id}`: Remove member from team (owner only).
-- `PATCH /api/teams/{team_id}/members/{user_id}`: Update agile role (`scrum_master`, `product_manager`, `team_member`) and notification preferences JSONB array.
+- `PATCH /api/teams/{team_id}/members/{user_id}`: Update agile role (`scrum_master`, `product_manager`, `team_member`; `'admin'`/`'member'` aliases normalized) and notification preferences JSONB array.
 - `GET /api/teams/{team_id}/topics`: List team categorization topics with hex color codes.
 - `POST /api/teams/{team_id}/topics`: Create a new topic label with name and hex color.
 - `PATCH /api/teams/{team_id}/topics/{topic_id}`: Update topic name or hex color badge.
 - `DELETE /api/teams/{team_id}/topics/{topic_id}`: Delete topic from team workspace.
 - `POST /api/meetings/{meeting_id}/topics/{topic_id}`: Tag a meeting with a team topic.
 - `DELETE /api/meetings/{meeting_id}/topics/{topic_id}`: Remove topic tag from meeting.
-- `GET /api/teams/{team_id}/prompts`: Retrieve team prompt customization overrides.
-- `PUT /api/teams/{team_id}/prompts/{prompt_key}`: Set custom persona prompt template override.
+- `GET /api/teams/{team_id}/prompts`: Retrieve team prompt customization overrides across all 13 registered templates (8 customizable persona system prompts and 5 read-only user templates).
+- `PUT /api/teams/{team_id}/prompts/{prompt_key}`: Set custom persona prompt template override for any of the 8 customizable keys (returns 400 Bad Request if targeting the 5 read-only data wrappers).
 - `DELETE /api/teams/{team_id}/prompts/{prompt_key}`: Revert custom prompt to global system default.
 
 #### 3. Meeting Lifecycle & Control Endpoints (`app/main.py`)
 - `POST /api/meetings/start`: Deploy Vexa bot to meeting URL with specified `meeting_type` (`general`, `daily_standup`, `sprint_planning`).
 - `POST /api/meetings/{meeting_id}/leave`: Disconnect bot and trigger background multi-agent synthesis pipeline.
 - `POST /api/meetings/{meeting_id}/redispatch`: Redeploy Vexa bot to an existing meeting and resume background transcript polling and health monitoring.
-- `POST /api/meetings/{meeting_id}/resummarize`: Trigger background multi-agent re-summarization on modified transcript chunks with live thought streaming.
+- `POST /api/meetings/{meeting_id}/resummarize`: Trigger background multi-agent re-summarization on modified transcript chunks with live thought streaming (returns HTTP 200 with status and updated meeting payload).
 - `POST /api/meetings/{meeting_id}/stop-summary`: Cancel active background summarization tasks and broadcast `summary_stopped` via WebSockets.
 - `GET /api/meetings/{meeting_id}/summary-thoughts`: Retrieve live deliberation thoughts and reasoning emitted by Scrum Master, Tech Lead, and PM personas.
 - `GET /api/meetings`: List accessible meetings with filters, topic tags, meeting type, and speaker attributions.
 - `GET /api/meetings/{meeting_id}`: Retrieve detailed meeting summary, debate logs, speaker mappings, and summarization state.
 - `PATCH /api/meetings/{meeting_id}`: Rename meeting title or update `meeting_type`.
 - `DELETE /api/meetings/{meeting_id}`: Delete meeting record, cascading deletion to transcript chunks and action items.
-- `POST /api/meetings/{meeting_id}/explain`: Generate Instant Clarity technical or business explanation for recent speech window (Redis 60s TTL cached).
+- `POST /api/meetings/{meeting_id}/explain`: Generate Instant Clarity technical or business explanation for recent speech window (Redis 60s TTL cached, fail-open).
 
 #### 4. Transcript Auditing & Editing Endpoints (`app/main.py`)
 - `GET /api/meetings/{meeting_id}/transcript`: Retrieve chronologically ordered transcript chunks with audit metadata (`is_edited`, `original_text`, `original_speaker`, `edited_at`).
@@ -282,10 +282,10 @@ The cognitive core of MeetingMind AI is managed by the `ControllerAgent` (`backe
 - `POST /api/meetings/{meeting_id}/transcript`: Manually insert a new transcript chunk with custom timestamp and speaker attribution.
 
 #### 5. Action Item Kanban Endpoints (`app/main.py`)
-- `GET /api/actions`: List system-wide action items categorized by type (`parking_lot`, `to_do`, `to_schedule`, `blocker`) and status (`pending`, `accepted`, `rejected`).
+- `GET /api/actions`: List system-wide action items categorized by type (`parking_lot`, `to_do`, `to_schedule`, `blocker`) and status (`pending`, `accepted`, `rejected`, `archived`).
 - `GET /api/meetings/{meeting_id}/actions`: List action items specific to a meeting grouped by category and status.
-- `POST /api/meetings/{meeting_id}/actions`: Manually create action items with category (`parking_lot`, `to_do`, `to_schedule`, `blocker`), assignee user ID, tags, and status.
-- `PATCH /api/meetings/{meeting_id}/actions/{action_id}`: Update action item status (`accepted`, `pending`, `rejected`), assignee ID, tags, or description content.
+- `POST /api/meetings/{meeting_id}/actions`: Manually create action items with category (`parking_lot`, `to_do`, `to_schedule`, `blocker`), assignee user ID, tags, and status (defaults to `accepted`).
+- `PATCH /api/meetings/{meeting_id}/actions/{action_id}`: Update action item status (`accepted`, `pending`, `rejected`, `archived`), assignee ID, tags, or description content.
 - `DELETE /api/meetings/{meeting_id}/actions/{action_id}`: Remove an action item.
 
 #### 6. Email Report Distribution Endpoints (`app/main.py`)

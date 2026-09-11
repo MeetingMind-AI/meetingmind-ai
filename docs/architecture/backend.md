@@ -126,11 +126,13 @@ All team endpoints require a valid session cookie. Members-only actions return `
 ### Meeting Lifecycle
 
 - `POST /api/meetings/start`
-  - Body: `{ "platform": "<platform>", "native_id": "<meeting-id>", "team_id": 1, "passcode": "" }`
+  - Body: `{ "platform": "<platform>", "native_id": "<meeting-id>", "team_id": 1, "passcode": "", "meeting_type": "general" }`
   - `platform` (required): `google_meet` or `teams`
+  - `native_id` (required): Meeting identification string
   - `team_id` (optional): associates the meeting with a team
   - `passcode` (optional): required for passcode-protected Teams meetings
-  - Deploys a Vexa bot to join the meeting. Upserts the meeting record (re-uses existing row if `vexa_meeting_id` already exists). Schedules background tasks to poll transcripts and monitor the meeting lifecycle until completion. Returns `{"meeting_id": ...}`.
+  - `meeting_type` (optional): Agile meeting type (`general`, `daily_standup`, `sprint_planning`, etc.; defaults to `"general"`)
+  - Deploys a Vexa bot to join the meeting. Upserts the meeting record (re-uses existing row if active, or creates a new row with a UUID suffix if previous meeting was in terminal status `completed` or `failed`). Schedules background tasks to poll transcripts and monitor the meeting lifecycle until completion. Returns `{"meeting_id": ..., "meeting_type": ...}`.
 
 - `POST /api/meetings/{meeting_id}/leave`
   - Instructs the Vexa bot to leave the meeting via the Vexa bot DELETE API.
@@ -145,7 +147,7 @@ All team endpoints require a valid session cookie. Members-only actions return `
 - `POST /api/meetings/{meeting_id}/explain`
   - Body: `{ "mode": "technical", "last_x_minutes": 2 }`
   - Generates an LLM-powered "instant clarity" explanation of recent transcript content. Supports `"technical"` or `"business"` personas. Filters by `last_x_minutes` if provided.
-  - Responses are cached in Redis for 60 seconds by hashed prompt (context + mode). When cached, the response returns immediately without a new LLM call.
+  - Responses are cached in Redis for 60 seconds by hashed prompt (context + mode) with fail-open fallback. When cached, the response returns immediately without a new LLM call.
   - Response:
     ```json
     {
@@ -203,8 +205,8 @@ All team endpoints require a valid session cookie. Members-only actions return `
   }
   ```
   Returns `404` if not found.
-- `PATCH /api/meetings/{meeting_id}` — Renames a meeting. Body: `{ "title": "new title" }`. Returns `{"id": ..., "title": ...}`.
-- `DELETE /api/meetings/{meeting_id}` — Deletes a meeting record. Returns `{"ok": True}`. Returns `404` if not found.
+- `PATCH /api/meetings/{meeting_id}` — Renames a meeting or updates `meeting_type`. Body: `{ "title": "new title", "meeting_type": "sprint_planning" }`. Returns `{"ok": true, "title": ..., "meeting_type": ...}`.
+- `DELETE /api/meetings/{meeting_id}` — Deletes a meeting record. Returns `{"ok": true}`. Returns `404` if not found.
 
 ### Meeting Topics
 
@@ -314,7 +316,7 @@ During live ingestion, the LLM detects four types of proposals from each utteran
 
 ### Re-summarization
 
-- `POST /api/meetings/{meeting_id}/resummarize` — Triggers a full re-run of the multi-persona report pipeline against the current transcript. Returns `202 Accepted` and runs in the background.
+- `POST /api/meetings/{meeting_id}/resummarize` — Triggers a full re-run of the multi-persona report pipeline against the current transcript. Returns HTTP `200 OK` with status and updated meeting payload (`{"ok": true, "status": "processing", "message": "Summary regeneration running in background.", "meeting": {...}}`) and runs in the background.
 - `POST /api/meetings/{meeting_id}/stop-summary` — Cancels an in-progress re-summarization for the meeting. Returns `{"ok": true}`.
 - `GET /api/meetings/{meeting_id}/summary-thoughts` — Returns the streamed reasoning steps captured during the most recent summarization run.
 
@@ -333,7 +335,7 @@ During live ingestion, the LLM detects four types of proposals from each utteran
 
 ### WebSocket
 
-- `WS /api/ws/ingest/{meeting_id}` — Server-push streaming channel. Clients connect and receive events; they do not push transcript data. The server streams the following event types:
+- `WS /api/ws/ingest/{meeting_id}` — Bidirectional WebSocket streaming channel. Clients connect and receive live events; clients can also send incoming speech utterances (`{"speaker": "...", "text": "..."}`). The server streams the following event types:
 
   | Event type | Description |
   |---|---|
@@ -431,7 +433,7 @@ Stores high-level metadata about meetings orchestrated by Vexa.
 | `user_id` | `Integer` | Indexed | FK → `users.id` (CASCADE delete). |
 | `team_id` | `Integer` | Indexed | FK → `teams.id` (CASCADE delete). |
 | `joined_at` | `DateTime` | `now()` | |
-| `role` | `String(32)` | `'team_member'` | Agile role: `scrum_master`, `product_manager`, or `team_member`. |
+| `role` | `String(50)` | `'team_member'` | Agile role: `scrum_master`, `product_manager`, or `team_member` (`'admin'`/`'member'` aliases normalized). |
 | `notification_preferences` | `JSONB` | `[]` | Array of notification filter tokens (e.g. `type:blocker`, `business:off`). |
 
 Unique constraint on `(user_id, team_id)`.
@@ -453,16 +455,18 @@ Stores raw transcription snippets returned by Vexa WebSocket events and synced l
 | `edited_by` | `Integer` | `NULL` | FK → `users.id` — who performed the edit. |
 
 #### 7. `agent_actions` Table
-Stores AI-detected proposals (to-dos, parking lot items, items to schedule) extracted during live transcript ingestion.
+Stores AI-detected proposals (to-dos, parking lot items, items to schedule) extracted during live transcript ingestion or manually created by users.
 
 | Column | Type | Default | Description |
 |--------|------|---------|-------------|
 | `id` | `Integer` | Primary Key | |
 | `meeting_id` | `Integer` | Indexed | FK → `meetings.id` (CASCADE delete). |
+| `assignee_id` | `Integer` | `NULL` | FK → `users.id` (SET NULL on delete). Assigned team member. |
 | `agent_role` | `String(120)` | | The AI persona that raised the action (e.g. `scrum_master`). |
-| `action_type` | `String(120)` | | `to_do`, `parking_lot`, or `to_schedule`. |
+| `action_type` | `String(120)` | | `to_do`, `parking_lot`, `to_schedule`, or `blocker`. |
 | `content` | `Text` | | The action text. |
-| `status` | `String(20)` | `'pending'` | `pending`, `accepted`, or `rejected`. |
+| `status` | `String(20)` | `'pending'` | `pending`, `accepted`, `rejected`, or `archived`. |
+| `tags` | `JSONB` | `[]` | Category or context tags for the action item. |
 
 #### 8. `topics` Table
 Team-scoped labels that can be assigned to meetings as tags.
@@ -490,7 +494,7 @@ Per-team overrides for the LLM prompts used during AI analysis. When a row exist
 |--------|------|---------|-------------|
 | `id` | `Integer` | Primary Key | |
 | `team_id` | `Integer` | Indexed | FK → `teams.id` (CASCADE delete). |
-| `prompt_key` | `String(64)` | | One of 8 known keys: `realtime_scrum_master`, `final_tech_lead`, `final_product_manager`, `discussion_tech_lead`, `discussion_product_manager`, `synthesis`, `instant_clarity_technical`, `instant_clarity_business`. |
+| `prompt_key` | `String(64)` | | One of 13 registered keys in `PROMPT_DEFAULTS` (8 customizable persona system prompts and 5 read-only user templates). |
 | `prompt_text` | `Text` | | The custom prompt text that replaces the global default for this team. |
 | `updated_at` | `DateTime` | `now()` | Updated automatically on each write. |
 
@@ -562,7 +566,7 @@ Because Vexa is running locally, these URLs should point to the Vexa container o
 
 - **`VEXA_API_BASE_URL`** or **`VEXA_API_URL`**
   - **What it is:** The REST endpoint for bot control and transcript syncing.
-  - **How to get it:** Leave blank to use the default `http://host.docker.internal:8056`.
+  - **How to get it:** Leave blank to use the default `http://host.docker.internal:8056` (or `http://gateway:8000/bots` in Docker).
 - **`VEXA_WS_URL`** (Deprecated)
   - **What it is:** The WebSocket endpoint for live transcript listening. No longer used as we use REST polling.
 - **`VEXA_WEBHOOK_SECRET`** (Optional)
@@ -570,7 +574,7 @@ Because Vexa is running locally, these URLs should point to the Vexa container o
   - **How to get it:** Ensure both repositories share the same secret key in their `.env` files.
 - **`VEXA_MEETING_POLL_INTERVAL_SECONDS`** (Optional)
   - **What it is:** Polling cadence fallback (in seconds) in case the WebSocket disconnects.
-  - **How to get it:** Defaults to `10`. No setup required.
+  - **How to get it:** Defaults to `5` in `vexa_client.py`. No setup required.
 
 ## Transcript Ingestion Strategy (REST API Polling)
 

@@ -64,7 +64,7 @@ DEFAULT_ROLE_PREFERENCES = {
 - **Category & Topic Tags**:
   - `business`, `scope`, `feature`: Product and roadmap-related proposals.
   - `technical`, `architecture`: Engineering and codebase-focused proposals.
-  - Custom team topics created via `POST /api/teams/{id}/topics` (e.g., `#security`, `#devops`).
+  - Custom team topics created via `POST /api/teams/{team_id}/topics` (e.g., `#security`, `#devops`).
 
 ---
 
@@ -183,11 +183,11 @@ Requires workspace owner/admin permissions, or user updating their own profile.
 ## 6. UI Configuration Workflow
 
 1. **Initial Team Setup (`TeamSetupModal.jsx`)**:
-   - When creating or joining a team, the user selects their primary Agile role (`Scrum Master`, `Product Manager`, `Team Member`).
-   - The corresponding default notification profile is automatically initialized.
+   - When creating a workspace, users select relevant topic tags for their team and configure baseline technical/business notification preferences.
+   - The team invite link is displayed for sharing with colleagues.
 
 2. **Team Settings Management (`Settings.jsx`)**:
-   - Navigate to **Settings -> Team Management**.
+   - Navigate to **Settings -> Members** tab.
    - View all team members in a structured table with avatar photos and role badges.
-   - Team owners can modify roles via dropdown.
+   - Team owners can modify member roles via dropdown (`Scrum Master`, `Product Manager`, `Team Member`).
    - Individual members can expand their **Notification Filters** card to toggle specific event types (Blockers, Parking Lot, Tasks, Insights) and topic badges with real-time saving.

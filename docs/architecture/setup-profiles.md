@@ -12,8 +12,8 @@ This is the production-grade deployment profile. It leverages the native NVIDIA 
 - Docker and Docker Compose installed.
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed.
 
-**Configuration (`docker-compose.yml`):**
-Ensure the `ollama` service in your compose file is configured to use the GPU:
+**Configuration (`docker-compose.yml` / `deploy/scaleway/docker-compose.gpu.yml`):**
+Ensure the `ollama` service in your compose file is configured to use the GPU (comment out the default CPU/memory limits in `docker-compose.yml` and uncomment the GPU reservations, or pass `-f deploy/scaleway/docker-compose.gpu.yml`):
 ```yaml
 ollama:
   image: ollama/ollama:latest
@@ -32,10 +32,12 @@ ollama:
 git clone --recurse-submodules https://github.com/MeetingMind-AI/meetingmind-ai.git
 cd meetingmind-ai
 
-# Run the automated setup (recommended)
+# Run the automated setup (recommended — provisions .env, Vexa network, STT, and models)
 make setup
 
-# Or manually: start the stack, then pull models into the Ollama container
+# Or if running manually, bootstrap Vexa and STT first to create the external network:
+make vexa-up
+make stt-up
 docker compose up -d
 docker compose exec ollama ollama pull hermes3:8b
 docker compose exec ollama ollama pull nomic-embed-text
@@ -50,6 +52,7 @@ The automated `setup.sh` script detects Apple Silicon and handles this routing a
 **Prerequisites:**
 - Docker Desktop installed.
 - [Ollama for macOS](https://ollama.com/download/mac) installed directly on your host machine.
+- In Docker Desktop Settings -> Resources, allocate **~5GB of RAM** (since Ollama runs directly on the host using Metal acceleration, Docker only hosts PostgreSQL, Redis, Qdrant, backend, frontend, and Whisper).
 
 **Configuration:**
 `setup.sh` sets these values in `.env` automatically on Mac. If configuring manually:

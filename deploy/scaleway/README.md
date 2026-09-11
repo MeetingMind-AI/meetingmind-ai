@@ -72,14 +72,14 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 
 **Start coding:** Actions tab → **☁️ Cloud — Up** → *Run workflow*. When it
 finishes, the run summary shows the IP and URLs. Open `https://<ip>` (accept the
-self-signed cert).
+self-signed cert). Note: Ensure your Scaleway Security Group allows inbound TCP traffic on port `443` (Nginx HTTPS frontend) and port `8000` (FastAPI backend directly, if accessing API without reverse proxy).
 
 **Stop coding:** Actions tab → **🌙 Cloud — Down** → *Run workflow*. Billing for
 the GPU stops. Your meetings, models, and DB stay on the volume for next time.
 
 **Check:** **🔎 Cloud — Status**.
 
-Locally instead of buttons (needs the same vars exported in your shell):
+Locally instead of buttons (requires `SCW_ACCESS_KEY`, `SCW_SECRET_KEY`, and `SCW_DEFAULT_PROJECT_ID` exported in your shell):
 
 ```bash
 make cloud-up

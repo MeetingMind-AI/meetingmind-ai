@@ -13,13 +13,13 @@
 The root `docker-compose.yml` applies several Linux-specific optimizations for a 16GB NVIDIA GPU:
 
 - **VRAM utilization:** `OLLAMA_NUM_PARALLEL: "2"` is tuned for 16GB cards so the Tech Lead and Product Manager agents can run in parallel using `hermes3:8b` (`q4_K_M`) plus `nomic-embed-text` without hitting OOM.
-- **Model residency:** `OLLAMA_KEEP_ALIVE="10h"` keeps models warm in VRAM across a working session, avoiding the multi-second reload cost on each new meeting/report. Lower it if you need to free VRAM aggressively between meetings.
+- **Model residency:** `OLLAMA_KEEP_ALIVE="10h"` keeps models warm in VRAM across a working session in the Docker Ollama container on Linux GPU setups, avoiding the multi-second reload cost on each new meeting/report. On Apple Silicon running native host Ollama, model residency is managed by the host `ollama` daemon.
 - **Shared memory:** `shm_size: '2gb'` is set on both `ollama` and `postgres` to prevent Linux bus errors during heavy tensor mutations and database workloads.
 - **OOM killer protection:** `oom_score_adj: -500` is applied to PostgreSQL so the kernel is less likely to terminate the database under RAM pressure.
 
-## Ollama Parallel Requests & Concurrency
+## Ollama Concurrency & Concurrency Protection
 
-The Ollama service is configured with `OLLAMA_NUM_PARALLEL=2`, allowing it to process up to **2 concurrent inference requests** per loaded model. In this case, the Tech Lead and Product Manager bots can run their initial analyses and cross-functional debate turns in parallel.
+While the Ollama service in `docker-compose.yml` is configured with `OLLAMA_NUM_PARALLEL=2`, the backend engine in `controller.py` enforces serialized single-flight inference via a global `_llm_semaphore = asyncio.Semaphore(1)` gate. This safeguards unified memory on Apple Silicon and consumer GPUs against thrashing, while allowing the container to process parallel slots when running in dedicated GPU environments.
 
 Each parallel slot allocates additional GPU/CPU memory for the KV cache. For `hermes3:8b`, expect roughly **1–2 GB of extra memory per slot**. To adjust the concurrency level, change the `OLLAMA_NUM_PARALLEL` value in `docker-compose.yml`:
 

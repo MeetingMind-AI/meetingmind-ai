@@ -8,7 +8,7 @@ Add a floating always-on-top mini panel to the Live meeting page that:
 - Opens automatically when the user switches to another app or window
 - Can also be opened manually via a "Pop out" button in the Live header
 - Shows **Explain Technical** and **Explain Business** buttons that call the existing API
-- Shows **Parking Lot** proposals captured during the meeting
+- Shows real-time actionable proposals (`to_do`, `parking_lot`, `to_schedule`, `blocker`) captured during the meeting with Accept/Park/Reject actions
 - Has a **"← Transcript"** button that closes the panel and brings the main meeting window back to front
 
 ---
@@ -31,7 +31,7 @@ This extends the standard `<video>` Picture-in-Picture API to support arbitrary 
 
 | File | Purpose |
 |---|---|
-| `frontend/src/pages/MiniPipContent.jsx` | React component rendered inside the PiP window. Self-contained: manages its own explain state and listens on `BroadcastChannel` for new parking lot proposals. |
+| `frontend/src/pages/MiniPipContent.jsx` | React component rendered inside the PiP window. Self-contained: manages its own explain state and listens on `BroadcastChannel` for pending proposals (`to_do`, `parking_lot`, `to_schedule`, `blocker`). |
 | `frontend/src/pages/MiniPopup.jsx` | Fallback route-based popup page (`/popup?meetingId=X&teamId=Y`) used when Document PiP is not available (no HTTPS). Reads initial proposals from `localStorage`. |
 | `frontend/src/pages/MiniPopup.css` | Styles for both `MiniPipContent` and `MiniPopup` using the `.mp-*` class namespace. |
 
@@ -41,7 +41,7 @@ This extends the standard `<video>` Picture-in-Picture API to support arbitrary 
 |---|---|
 | `frontend/src/pages/Live.jsx` | Added `openPip()` function, `BroadcastChannel` for real-time proposal broadcasting, `window blur` listener for auto-open, "Pop out" button in the header. |
 | `frontend/src/App.jsx` | Added `/popup` route (used by the `window.open()` fallback). |
-| `frontend/nginx.conf` | Added HTTPS listener (`listen 443 ssl`), SSL certificate paths, and `Permissions-Policy: document-picture-in-picture=*` header. |
+| `frontend/nginx.conf` | Added HTTPS listener (`listen 443 ssl`), SSL certificate paths, and `Permissions-Policy: document-picture-in-picture=(self)` header. |
 | `frontend/Dockerfile` | Added `openssl` step to generate a self-signed certificate at build time. Exposed port 443. |
 | `docker-compose.yml` | Added port mapping `443:443` for HTTPS. |
 

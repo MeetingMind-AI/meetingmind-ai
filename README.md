@@ -45,7 +45,7 @@ This repository is a monorepo that orchestrates the following submodules/zones:
 
 | Component | Description |
 |-----------|-------------|
-| **[`backend/`](backend/README.md)** | **Brain Zone:** FastAPI orchestration, transcription ingestion (PostgreSQL + Redis), and Ollama AI summarization. |
+| **[`backend/`](backend/README.md)** | **Brain Zone:** FastAPI orchestration, transcription ingestion (PostgreSQL), 60s Instant Clarity caching (Redis), and Ollama AI summarization. |
 | **[`frontend/`](frontend/README.md)** | **UI Zone:** React + Vite interface. A dashboard for managing meetings, kanban boards, and AI reports. |
 | **[`vexa/`](vexa/README.md)** | **Sensor Zone:** Open-source Vexa meeting bot stack that joins calls and streams speaker-attributed transcripts. |
 | **[`docs/`](docs/README.md)** | Central documentation hub containing detailed architecture and API references. |
@@ -67,14 +67,14 @@ flowchart TD
     end
 
     subgraph Sensor Zone
-      V[Vexa Gateway :8056]
+      V[Vexa Gateway :18056]
       VB[Vexa Meeting Bots]
     end
 
     F -->|REST / WS| B
     B -->|REST Polling| V
     B -->|SQL| DB
-    B -->|Cache / PubSub| R
+    B -->|60s TTL Cache| R
     B -->|Inference| O
     B -->|Semantic Search| M
     V -->|Spawns| VB
@@ -84,22 +84,24 @@ flowchart TD
 - **Sensor Zone (`vexa/`)**
   - Runs the Vexa bot stack locally (Supports both CPU and GPU setups).
   - Exposes:
-    - API Gateway: `http://localhost:8056`
-    - Admin API: `http://localhost:8057`
-    - Dashboard: `http://localhost:3001`
+    - API Gateway: `http://localhost:18056` (Docker container internal: `http://gateway:8000`)
+    - Admin API: `http://localhost:18057`
+    - Dashboard: `http://localhost:3001` (if enabled)
 - **Brain Zone (`backend/`)**
   - FastAPI service on `http://localhost:8000`
-  - PostgreSQL + Redis
-  - Ollama container on `http://ollama:11434` (accessible within the Docker network)
-  - Mem0 semantic memory layer (mem0ai) for cross-meeting context
-  - Uses fully merged, clean transcripts via Vexa REST API polling (WebSocket ingestion removed)
+  - PostgreSQL 15 (relational data, user sessions, transcript storage) + Redis 7 (60-second TTL Instant Clarity query cache)
+  - Ollama container on `http://ollama:11434` (or host native via `http://host.docker.internal:11434`)
+  - Mem0 semantic memory layer (mem0ai + Qdrant) for cross-meeting context
+  - Captures transcripts from Vexa via REST API polling; broadcasts live transcripts, proposals, and insights to clients over WebSockets (`/api/ws/ingest/{meeting_id}`)
 - **UI Zone (`frontend/`)**
   - Vite React App on `http://localhost:3000` or `https://<server-ip>`
 
 ## Prerequisites & System Requirements
 
 ### Minimum Hardware Specs
-- **RAM:** Minimum 10GB of RAM allocated to Docker.
+- **RAM allocated to Docker:**
+  - **With Native Host Ollama (e.g. Apple Silicon Mac / Host Linux):** **~5GB RAM** is sufficient for Docker, because LLM inference and model weights run directly in host memory.
+  - **With Docker Ollama (CPU or containerized GPU):** Minimum **10GB–12GB RAM** allocated to Docker to accommodate containerized model execution.
 - **CPU:** 4+ Cores recommended.
 - **Storage:** 20GB+ free space for Docker images, LLM weights, and Whisper models.
 
@@ -107,13 +109,15 @@ flowchart TD
 
 #### macOS (Apple Silicon / Intel)
 - Install **Docker Desktop for Mac**.
-- Open Docker Desktop Settings -> Resources -> **Allocate at least 12GB of RAM**.
+- Open Docker Desktop Settings -> Resources:
+  - **If using native Ollama on macOS host:** Allocate **~5GB of RAM** to Docker.
+  - **If running Ollama inside Docker:** Allocate at least **12GB of RAM** to Docker.
 - The `setup.sh` script automatically applies memory optimizations (e.g., disabling unused Vexa services) to keep the stack lightweight on Macs.
 
 #### Windows
 - Install **WSL2** (Windows Subsystem for Linux) and a Linux distribution like Ubuntu.
 - Install **Docker Desktop for Windows** and enable **WSL Integration** in Settings -> Resources -> WSL Integration.
-- Ensure Docker Desktop is allocated enough memory (via `.wslconfig` if necessary, setting `memory=12GB`).
+- Ensure Docker Desktop is allocated enough memory (via `.wslconfig` if necessary: setting `memory=6GB` if running Ollama natively on Windows/WSL host, or `memory=12GB` if running Ollama inside Docker).
 - Run the `setup.sh` script **inside your WSL terminal** (do not use PowerShell or Command Prompt).
 
 #### Linux

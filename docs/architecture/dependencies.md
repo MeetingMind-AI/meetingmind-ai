@@ -10,7 +10,7 @@ MeetingMind integrates **Mem0** (using `mem0ai`) to provide cross-meeting semant
 - **Context Injection (Search):** Before running the final report analysis, the backend searches Mem0 using the first 1000 characters of the new meeting transcript (falling back to "General agile meeting" if too short). The retrieved memories are injected into the final LLM prompt context, allowing the report to reference past decisions and blockers.
 - **Memory Storage (Save):** After the report is generated, the backend persists the newly discovered action items, decisions, and blockers from the Tech Lead, Product Manager, and Scrum Master back into Mem0. These are scoped under the user ID `"team_{team_id}"` (or `"global_team"` if no team ID is provided).
 - **Backend Only:** The frontend does not call Mem0 directly; memory influences the backend summaries exclusively.
-- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, `MEM0_LLM_MODEL`, `MEM0_EMBED_MODEL`, etc.). By default, it uses `hermes3:8b` for text generation and `nomic-embed-text` for embeddings, running entirely through the local Ollama instance.
+- **Configuration:** You can toggle Mem0 features and configure models using environment variables (`MEM0_ENABLED`, `MEM0_SEARCH_ENABLED`, `MEM0_SAVE_ENABLED`, `MEM0_OLLAMA_URL`, `MEM0_LLM_MODEL`, `MEM0_EMBED_MODEL`, etc.). In `docker-compose.yml`, it uses `hermes3:8b` for text generation and `nomic-embed-text` for embeddings (with a code fallback to `llama3.1` in `controller.py` if `MEM0_LLM_MODEL` is completely unset), running entirely through the local Ollama instance.
 
 ### Testing Mem0
 
@@ -56,8 +56,8 @@ PY
 
 **How it works in the project:**
 - **Headless Bots:** Vexa orchestrates headless browser bots that join the meeting URL provided by the user.
-- **Real-Time Data:** It streams transcript chunks and speaker information to MeetingMind via its REST and WebSocket interfaces. 
-- **Integration:** MeetingMind polls the Vexa REST API (`GET /transcripts/{platform}/{native_id}`) periodically for clean, pause-ignored transcript segments, storing them in the backend database.
+- **Real-Time Data:** It streams audio to a dedicated Whisper ASR container (`transcription-api:80`), exposing transcript segments to MeetingMind via its REST API. 
+- **Integration:** MeetingMind polls the Vexa REST API (`GET /transcripts/{platform}/{native_id}`) periodically for clean, pause-ignored transcript segments, storing them in PostgreSQL.
 
 ## 3. Ollama (Local LLMs)
 
@@ -66,7 +66,7 @@ PY
 **How it works in the project:**
 - **Inference:** Used heavily during both live meeting ingestion (for instant clarity and insights) and post-meeting analysis (the multi-persona debate and final report generation).
 - **Embeddings:** Powers the `nomic-embed-text` embedding model utilized by Mem0 for semantic search.
-- **Performance:** Configured heavily in `docker-compose.yml` (e.g., `OLLAMA_NUM_PARALLEL: "2"`, `OLLAMA_KEEP_ALIVE="10h"`) to optimize VRAM on GPUs for parallel inference between the Tech Lead and Product Manager agents.
+- **Concurrency & Resource Management:** While `docker-compose.yml` sets `OLLAMA_NUM_PARALLEL: "2"` and `OLLAMA_KEEP_ALIVE="10h"` for Linux GPU environments, the backend Python engine enforces single-flight serialized execution via a global `_llm_semaphore = asyncio.Semaphore(1)` gate to prevent memory thrashing on unified memory architectures (e.g. Apple Silicon).
 
 ## 4. Qdrant (Vector Database)
 
@@ -81,5 +81,14 @@ PY
 **PostgreSQL** serves as the primary relational database for the MeetingMind application.
 
 **How it works in the project:**
-- **Data Persistence:** Stores users, teams, meetings, raw transcript chunks, topics, and AgentActions (action items, parking lot items).
+- **Data Persistence:** Stores users, user session tokens (`sessions` table), teams, meetings, raw transcript chunks, topics, and AgentActions (action items, parking lot items).
 - **JSONB Support:** Heavily utilizes Postgres's `JSONB` columns to store structured summaries and dynamically changing speaker mappings without requiring rigid schemas.
+
+## 6. Redis (Instant Clarity Cache)
+
+**Redis 7** provides sub-second caching for the real-time AI clarification engine.
+
+**How it works in the project:**
+- **60-Second TTL Cache:** Caches responses for `POST /api/meetings/{id}/explain` keyed by `instant_clarity:<sha256(prompt + context)>`. If multiple participants request clarification on the same conversation window, the response is returned in <5 ms without re-invoking Ollama.
+- **Fail-Open Resilience:** Redis is optional at runtime. If Redis is unavailable, the backend gracefully catches the connection exception and falls through directly to live Ollama generation.
+- **Diagnostics:** Queried by `GET /api/system/status` via `PING` to report socket latency in the frontend diagnostics modal. Note: Redis is not used for Pub/Sub or session storage; WebSockets are managed in-process via `ConnectionManager` and sessions reside in PostgreSQL.

@@ -60,19 +60,18 @@ docker compose stop ollama
 docker compose restart backend
 ```
 
-* **Performance Boost**: 50–110+ tokens/sec (Metal GPU) vs 2–10 tokens/sec (Docker CPU).
+* **Performance Boost**: ~30–45 tokens/sec on base M-series, 70–110+ tokens/sec on Pro/Max/Ultra (Metal GPU) vs 2–10 tokens/sec (Docker CPU).
 * **RAM Usage**: `hermes3:8b` uses ~5GB RAM natively, shared with macOS via Unified Memory.
 
 ---
 
 ## Option B: Docker with CPU Limits (Fallback)
-- The `docker-compose.yml` limits Ollama to 8 CPU cores
-- Adjustable via `OLLAMA_CPU_LIMIT` env var
-- Whisper worker has 2 cores reserved, 4 cores max
+- The `docker-compose.yml` limits Ollama to 8 CPU cores (adjustable via `OLLAMA_CPU_LIMIT` in `.env`)
+- Whisper worker limits are set in `vexa/deploy/transcription/.env` (2 cores reserved, 4 cores max by default)
 - Tuning guidance by chip:
-  - **M4 Pro (14 cores)**: `OLLAMA_CPU_LIMIT=8`, `STT_CPU_LIMIT=4`
-  - **M3/M2 Pro (12 cores)**: `OLLAMA_CPU_LIMIT=6`, `STT_CPU_LIMIT=4`
-  - **M1/M2 (8 cores)**: `OLLAMA_CPU_LIMIT=4`, `STT_CPU_LIMIT=3`
+  - **M4 Pro (14 cores)**: `OLLAMA_CPU_LIMIT=8` in `.env`, `STT_CPU_LIMIT=4` in `vexa/deploy/transcription/.env`
+  - **M3/M2 Pro (12 cores)**: `OLLAMA_CPU_LIMIT=6` in `.env`, `STT_CPU_LIMIT=4` in `vexa/deploy/transcription/.env`
+  - **M1/M2 (8 cores)**: `OLLAMA_CPU_LIMIT=4` in `.env`, `STT_CPU_LIMIT=3` in `vexa/deploy/transcription/.env`
 
 ---
 
@@ -85,9 +84,11 @@ docker compose restart backend
 ---
 
 ## Docker Desktop Settings
-- Allocate at least 10–12 CPU cores to the Docker VM (Settings > Resources)
-- Allocate at least 10GB memory
-- Enable VirtioFS for faster file I/O
+- **CPU Cores**: Allocate at least 8–10 CPU cores to the Docker VM (Settings > Resources)
+- **Memory**:
+  - **With Native Ollama (Recommended):** Allocate **~5GB RAM** to Docker (only PostgreSQL, Qdrant, Redis, Whisper STT, and Node/FastAPI run inside Docker; Ollama runs directly on the macOS host with Metal GPU acceleration).
+  - **With Docker Ollama (Fallback):** Allocate at least **10GB–12GB RAM** to Docker.
+- **File Sharing**: Enable VirtioFS for faster file I/O
 
 ---
 
