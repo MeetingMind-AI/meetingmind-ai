@@ -132,7 +132,16 @@ flowchart TD
 
 We provide an automated setup script that handles dependencies, the Vexa bot, database migrations, and LLM pulls.
 
-### 1. Run the Setup (Cold Start)
+### 1. Clone the Repository
+
+Clone the monorepo with its submodules:
+```bash
+git clone --recurse-submodules https://github.com/MeetingMind-AI/meetingmind-ai.git
+cd meetingmind-ai
+```
+*(Note: If you already cloned without `--recurse-submodules`, `make setup` will automatically initialize and fetch them for you).*
+
+### 2. Run the Setup (Cold Start)
 
 To perform a complete setup interactively from a cold start, run:
 ```bash
@@ -154,7 +163,7 @@ This setup process will:
 6. Run PostgreSQL database migrations.
 7. Pull the required Ollama models.
 
-### 2. Standard Start / Stop
+### 3. Standard Start / Stop
 
 If you have already run the setup and just want to bring the existing stack up or down without rebuilding:
 ```bash
@@ -162,7 +171,7 @@ make up
 make down
 ```
 
-### 3. Rebuilding the Stack
+### 4. Rebuilding the Stack
 
 If you pull new code or make changes to the backend/frontend and want to apply them, you can rebuild the core stack quickly by running:
 ```bash
@@ -170,7 +179,7 @@ make rebuild
 ```
 This performs a safe `docker compose up -d --build` for the main stack and also restarts/rebuilds the Vexa stack to pick up any changes, without destroying your data or requiring a full cold start.
 
-### 4. Access the Web UI
+### 5. Access the Web UI
 
 Once the setup completes and all containers are running, open the app in your browser:
 

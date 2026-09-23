@@ -86,7 +86,10 @@ prompt_yes_no() {
   local default="$2"
   local reply
   if [ "$NON_INTERACTIVE" = "true" ]; then
-    return 1 # Default to NO in non-interactive mode for optional features
+    case "$default" in
+      y|Y|yes|YES) return 0 ;;
+      *) return 1 ;;
+    esac
   fi
   while true; do
     read -r -p "$prompt" reply
@@ -114,6 +117,19 @@ main() {
   require_cmd curl
   detect_compose
   log_ok "Dependencies detected"
+
+  log_step "Checking Git submodules"
+  if [ ! -f "./vexa/deploy/compose/.env.example" ] || [ ! -f "./backend/Dockerfile" ] || [ ! -f "./frontend/Dockerfile" ]; then
+    if command -v git >/dev/null 2>&1 && [ -d ".git" ]; then
+      log_step "Submodules missing or uninitialized — running git submodule update..."
+      git submodule update --init --recursive
+      log_ok "Submodules initialized"
+    else
+      log_warn "Submodules may not be initialized. If setup fails, run: git submodule update --init --recursive"
+    fi
+  else
+    log_ok "Submodules detected"
+  fi
 
   if command -v nvidia-smi >/dev/null 2>&1; then
     if nvidia-smi -q -d PERSISTENCE >/dev/null 2>&1; then
@@ -204,6 +220,16 @@ EOF
   "${COMPOSE_CMD[@]}" up -d postgres redis qdrant
   log_ok "Core services started"
 
+  log_step "Pruning unused Vexa services (minio, terminal, dashboard)"
+  if [ -f "./clean_vexa.py" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+      python3 clean_vexa.py || log_warn "clean_vexa.py encountered issues, proceeding..."
+    elif command -v python >/dev/null 2>&1; then
+      python clean_vexa.py || log_warn "clean_vexa.py encountered issues, proceeding..."
+    fi
+  fi
+  log_ok "Vexa configuration pruned"
+
   log_step "Starting Vexa services"
   "${COMPOSE_CMD[@]}" -p vexa-v012 -f ./vexa/deploy/compose/docker-compose.yml -f ./vexa.override.yml --env-file ./vexa/.env up -d
   log_ok "Vexa services started"
@@ -280,7 +306,11 @@ EOF
   fi
 
   log_step "Running database migrations"
-  "${COMPOSE_CMD[@]}" exec -T backend alembic upgrade head
+  "${COMPOSE_CMD[@]}" exec -T backend alembic upgrade head || {
+    log_warn "Alembic upgrade encountered pre-existing tables — stamping head..."
+    "${COMPOSE_CMD[@]}" exec -T backend alembic stamp head
+    log_ok "Database stamped at head revision"
+  }
   log_ok "Database migrations complete"
 
   log_step "Pulling Ollama models"
