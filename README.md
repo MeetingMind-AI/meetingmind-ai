@@ -199,6 +199,24 @@ Once the setup completes and all containers are running, open the app in your br
 >
 > **Tip:** If you are accessing from your local machine, `http://localhost:3000` works without any certificate warning because browsers treat `localhost` as a secure context.
 
+### 6. Running a Meeting & Important Heads-Up (Expected Behaviors)
+
+When dispatching the bot into a call (Google Meet or Microsoft Teams), keep the following behaviors in mind to ensure smooth transcription:
+
+- **No Browser or OS Microphone Permissions Required**: MeetingMind does **not** record through your browser tab or local microphone. Instead, an automated headless bot named **`Meeting Mind`** joins the call directly as an external participant and captures the call's audio stream.
+- **Admit the Bot into the Call**: Because the bot joins as an external guest, Google Meet/Teams places it in the waiting room. The meeting host **must click "Admit"** on the popup (*"Someone wants to join this call: Meeting Mind"*). Until the bot is admitted, it cannot capture any audio.
+- **Speak Continuously for 10–15 Seconds (Silence Filter)**: The local Whisper service uses Voice Activity Detection (VAD) and an energy silence filter (`RMS < 0.0025`). Saying a brief 2-second greeting like *"hello, testing"* or waiting silently is intentionally filtered out as noise to avoid hallucinating phantom text. Speak naturally for a few complete sentences to emit the first transcript segment.
+- **English Default vs Multilingual Meetings**: The default transcription model is English-optimized (`small.en`) for low CPU overhead (~18x real-time). If your meeting is conducted in another language (e.g., Dutch, German, French, Spanish), run `./change_models.sh` and select the multilingual `small` or `large-v3-turbo` model.
+- **Institutional / University Accounts**: If your meeting is hosted on a university or enterprise Google Workspace account, ensure Google Meet **Host Management** allows external guests to join. If enterprise domain policies block external accounts, test using a personal `@gmail.com` link.
+- **First Startup Takes Longer (Cold Start)**: On the very first launch, the Whisper transcription container downloads the model weights (`small.en`, ~460 MB) and Ollama pulls the LLM weights (`hermes3:8b`, ~4.7 GB). Allow 1–3 minutes on initial cold boot for the models to finish downloading and load into memory before dispatching your first meeting. Subsequent runs are nearly instantaneous. Always verify the status pill in the top header is green before starting.
+- **Solo Testing & Automatic Inactivity Leave**: When testing alone, the bot actively tracks audio energy. If silence persists for 10 minutes or all human participants leave the call, the bot disconnects automatically.
+- **Post-Meeting Multi-Agent Deliberation**: When you click **"Leave Meeting"** on the Live dashboard, the multi-agent cognitive deliberation kicks off automatically: Scrum Master, Product Manager, and Tech Lead debate across 3 rounds to produce the Agile report and extract Kanban items. On GPU setups, this takes ~15–30 seconds; on CPU-only mode, expect ~1–2 minutes.
+- **Verifying System Readiness**: Click the **status indicator pill** in the top navigation bar of `http://localhost:3000` (or visit `http://localhost:8000/api/system/status`) to confirm that all backing services (Whisper STT, Ollama, PostgreSQL, Redis, Qdrant) show green status dots before launching a call.
+- **Inspecting Live Bot Logs**: If you want to monitor the headless bot's browser interactions and audio levels in real time from your terminal:
+  ```bash
+  docker logs -f $(docker ps -q --filter "name=vexa-mtg" | head -n 1)
+  ```
+
 ## Cloud Deployment (Optional, On-Demand GPU)
 
 No local GPU? You can run MeetingMind on a **Scaleway L4 GPU instance that is created and fully deleted on demand** — compute is billed only while you are coding, and a small persistent volume keeps your models and data between sessions. Bring it up or tear it down with GitHub Actions buttons (or `make cloud-up` / `make cloud-down`).
