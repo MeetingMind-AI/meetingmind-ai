@@ -1,0 +1,9 @@
+services:
+  app:
+    image: alpine
+    command: sleep 3600
+    networks:
+      - mynet
+networks:
+  mynet:
+    driver: bridge

@@ -32,13 +32,25 @@ stt-up:
 		printf "$(COLOR_OK)[stt] Transcription service already running.$(COLOR_RESET)\n"; \
 	else \
 		printf "$(COLOR_TITLE)[stt] Starting local transcription service (Whisper)...$(COLOR_RESET)\n"; \
-		docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.cpu.yml --env-file vexa/deploy/transcription/.env up -d --remove-orphans; \
-		printf "$(COLOR_OK)[stt] Transcription service up.$(COLOR_RESET)\n"; \
+		export STT_MODE=$$(grep "^STT_HARDWARE=" .env 2>/dev/null | cut -d'=' -f2 || true); \
+		if [ -z "$$STT_MODE" ]; then export STT_MODE="cpu"; fi; \
+		if [ "$$STT_MODE" = "gpu" ]; then \
+			docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.yml -f vexa-stt-network.override.yml --env-file vexa/deploy/transcription/.env up -d --remove-orphans; \
+		else \
+			docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.cpu.yml -f vexa-stt-network.override.yml -f vexa-stt-cpu.override.yml --env-file vexa/deploy/transcription/.env up -d --remove-orphans; \
+		fi; \
+		printf "$(COLOR_OK)[stt] Transcription service up.$$STT_MODE mode.$(COLOR_RESET)\n"; \
 	fi
 
 stt-down:
 	@printf "$(COLOR_TITLE)[stt] Stopping transcription service...$(COLOR_RESET)\n"
-	@docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.cpu.yml --env-file vexa/deploy/transcription/.env down
+	@export STT_MODE=$$(grep "^STT_HARDWARE=" .env 2>/dev/null | cut -d'=' -f2 || true); \
+	if [ -z "$$STT_MODE" ]; then export STT_MODE="cpu"; fi; \
+	if [ "$$STT_MODE" = "gpu" ]; then \
+		docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.yml -f vexa-stt-network.override.yml --env-file vexa/deploy/transcription/.env down; \
+	else \
+		docker compose -p vexa_stt -f vexa/deploy/transcription/docker-compose.cpu.yml -f vexa-stt-network.override.yml -f vexa-stt-cpu.override.yml --env-file vexa/deploy/transcription/.env down; \
+	fi
 	@printf "$(COLOR_OK)[stt] Transcription service stopped.$(COLOR_RESET)\n"
 
 app-up:

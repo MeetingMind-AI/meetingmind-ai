@@ -1,0 +1,4 @@
+networks:
+  transcription-net:
+    name: ${VEXA_NETWORK:-vexa_vexa}
+    external: true

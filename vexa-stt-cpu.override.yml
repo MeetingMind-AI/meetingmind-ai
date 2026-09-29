@@ -1,0 +1,13 @@
+services:
+  transcription-worker-1:
+    environment:
+      - MODEL_SIZE=${MODEL_SIZE:-small.en}
+      - CPU_THREADS=${CPU_THREADS:-4}
+      - BEAM_SIZE=${BEAM_SIZE:-1}
+      - BEST_OF=${BEST_OF:-1}
+    deploy:
+      resources:
+        limits:
+          cpus: "${STT_CPU_LIMIT:-4.0}"
+        reservations:
+          cpus: "${STT_CPU_RESERVE:-2.0}"

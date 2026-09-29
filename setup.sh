@@ -291,8 +291,25 @@ EOF
   "${COMPOSE_CMD[@]}" -p vexa-v012 -f ./vexa/deploy/compose/docker-compose.yml -f ./vexa.override.yml --env-file ./vexa/.env up -d
   log_ok "Vexa services updated"
 
-  log_step "Starting Transcription Service"
-  (cd ./vexa/deploy/transcription && "${COMPOSE_CMD[@]}" -p vexa_stt -f docker-compose.cpu.yml up -d)
+  # Prompt for STT hardware choice if not already in .env
+  stt_mode=$(grep "^STT_HARDWARE=" ./.env 2>/dev/null | cut -d'=' -f2 || true)
+  if [ -z "$stt_mode" ]; then
+    printf "\n"
+    read -p "? Are you running on a Mac or CPU-only machine? (Type 'n' if you have a dedicated Nvidia GPU) [Y/n]: " user_stt
+    if [[ "$user_stt" =~ ^[Nn]$ ]]; then
+      stt_mode="gpu"
+    else
+      stt_mode="cpu"
+    fi
+    update_env_key "./.env" "STT_HARDWARE" "$stt_mode"
+  fi
+
+  log_step "Starting Transcription Service ($stt_mode mode)"
+  if [ "$stt_mode" = "gpu" ]; then
+    (cd ./vexa/deploy/transcription && "${COMPOSE_CMD[@]}" -p vexa_stt -f docker-compose.yml -f ../../../vexa-stt-network.override.yml up -d)
+  else
+    (cd ./vexa/deploy/transcription && "${COMPOSE_CMD[@]}" -p vexa_stt -f docker-compose.cpu.yml -f ../../../vexa-stt-network.override.yml -f ../../../vexa-stt-cpu.override.yml up -d)
+  fi
   log_ok "Transcription Service started"
 
   log_step "Starting full MeetingMind stack"

@@ -1,0 +1,4 @@
+networks:
+  mynet:
+    name: vexa-v012_vexa
+    external: true
